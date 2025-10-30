@@ -1,0 +1,65 @@
+# =========================================
+# 🧩 GENERAL
+# =========================================
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+logs/
+debug.log
+*.swp
+
+# =========================================
+# ⚙️ NODE & TYPESCRIPT BUILD
+# =========================================
+node_modules/
+dist/
+build/
+out/
+coverage/
+.tmp/
+.cache/
+.next/
+.vscode/
+
+# =========================================
+# 🔒 ENVIRONMENT & CONFIG
+# =========================================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+!.env.example          # cho phép commit template env
+dotenv-debug.json
+
+# =========================================
+# ⚡ TOOLING & LINTING
+# =========================================
+.eslintcache
+.stylelintcache
+.prettierignore
+.turbo/
+.cache-loader/
+.nyc_output/
+
+# =========================================
+# 📦 PACKAGE MANAGERS
+# =========================================
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# =========================================
+# 🧠 EDITOR / IDE FILES
+# =========================================
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
