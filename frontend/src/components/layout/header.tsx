@@ -4,10 +4,10 @@ import { useState, Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from 'next/navigation';
+import { Transition } from "@headlessui/react"; 
 
 import { LanguageOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined } from '@mui/icons-material';
 import logo from "@/assets/logo.svg";
-import { Transition } from "@headlessui/react"; 
 
 export default function Header() {
 
