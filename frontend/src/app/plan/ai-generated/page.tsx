@@ -1,4 +1,5 @@
-
+import { ArrowCircleLeft } from '@mui/icons-material';
+import Link from 'next/link';
 
 export default function GeneratedPlan({ 
   searchParams 
@@ -23,6 +24,46 @@ export default function GeneratedPlan({
         <p>Date: <strong>{searchParams.date}</strong></p>
         <p>Group: <strong>{searchParams.people}</strong></p>
         <p>Budget: <strong>{searchParams.budget}</strong></p>
+
+        {/* left section */}
+        <div>
+          {/* */}
+          <div>
+            {/* buttons */}
+            <div>
+              <Link href={''}><ArrowCircleLeft /></Link>
+            </div>
+            <div>
+              <p className="paragraph-p1-medium">Your Itinerary</p>
+              <div >
+                <p className="paragraph-p3-medium text-dark-text">{searchParams.theme} itinerary</p>
+                <p className="paragraph-p3-regular text-sub-text">{searchParams.date}</p>
+                <p className="paragraph-p3-regular text-sub-text">Est. Number of hours (Number of locations)</p>
+              </div>
+              <div>
+                <p className="paragraph-p3-regular text-sub-text">{searchParams.people}</p>
+                <p className="paragraph-p3-regular text-sub-text">{searchParams.duration}</p>
+                <p className="paragraph-p3-regular text-sub-text">{searchParams.budget}</p>
+              </div>
+            </div>
+            <div>
+              <button></button>
+              <div>
+                <button>Edit plan</button>
+                <button>Add new shop</button>
+              </div>
+            </div>
+          </div>
+          {/* Main Content Area */}
+          <div>
+            
+          </div>
+        </div>
+
+        {/* Map */}
+        <div>
+
+        </div>
       </section>
     </>
   );
