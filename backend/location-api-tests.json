@@ -1,0 +1,125 @@
+{
+  "info": {
+    "name": "Travista - Location API Tests",
+    "description": "Test collection for Geocoding & Directions API spike",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Geocode Address",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"address\": \"Nhà thờ Đức Bà, Quận 1, TP. Hồ Chí Minh\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/location/geocode",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "location", "geocode"]
+        }
+      }
+    },
+    {
+      "name": "2. Get Directions (by Coordinates)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"origin\": {\n    \"lat\": 10.8231,\n    \"lng\": 106.6297\n  },\n  \"destination\": {\n    \"lat\": 10.7769,\n    \"lng\": 106.7009\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/location/directions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "location", "directions"]
+        }
+      }
+    },
+    {
+      "name": "3. Get Directions by Address",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"originAddress\": \"Chợ Bến Thành, TP. Hồ Chí Minh\",\n  \"destinationAddress\": \"Sân bay Tân Sơn Nhất, TP. Hồ Chí Minh\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/location/directions-by-address",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "location", "directions-by-address"]
+        }
+      }
+    },
+    {
+      "name": "4. Test Invalid Geocode (should fail validation)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"address\": \"\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/location/geocode",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "location", "geocode"]
+        }
+      }
+    },
+    {
+      "name": "5. Test Invalid Coordinates (should fail validation)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"origin\": {\n    \"lat\": 200,\n    \"lng\": 106.6297\n  },\n  \"destination\": {\n    \"lat\": 10.7769,\n    \"lng\": 106.7009\n  }\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/api/location/directions",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["api", "location", "directions"]
+        }
+      }
+    }
+  ]
+}
+

@@ -6,6 +6,7 @@ import morgan from 'morgan'
 import { connectDatabase } from '@/database/connection'
 import { errorHandler } from '@/middlewares/errorHandler'
 import { userRouter } from '@/modules/user/user.route'
+import { locationRouter } from '@/modules/location/location.route'
 
 const app = express()
 
@@ -21,6 +22,7 @@ connectDatabase()
 
 // Routes
 app.use('/api/users', userRouter)
+app.use('/api/location', locationRouter)
 
 // Global error handler
 app.use(errorHandler)

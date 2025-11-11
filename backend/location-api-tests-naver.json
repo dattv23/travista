@@ -1,0 +1,385 @@
+{
+  "info": {
+    "name": "Travista - Naver Maps API Tests",
+    "description": "Test collection for Naver Cloud Platform Maps Geocoding & Directions",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Korean Addresses",
+      "item": [
+        {
+          "name": "1. Geocode - NAVER Green Factory (Korean)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"네이버 그린팩토리\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        },
+        {
+          "name": "2. Geocode - Seoul City Hall (Korean)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"서울시청\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        },
+        {
+          "name": "3. Directions by Address - Gangnam to Seoul Station",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originAddress\": \"강남역\",\n  \"destinationAddress\": \"서울역\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/directions-by-address",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "directions-by-address"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "English Addresses",
+      "item": [
+        {
+          "name": "1. Geocode - NAVER Green Factory (English)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"6 Buljeong-ro, Bundang-gu, Seongnam-si, Gyeonggi-do\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        },
+        {
+          "name": "2. Geocode - Seoul City Hall (English)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Seoul City Hall, Seoul\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vietnam Addresses (Test Coverage)",
+      "item": [
+        {
+          "name": "1. Geocode - Ben Thanh Market",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Chợ Bến Thành, TP. Hồ Chí Minh, Vietnam\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        },
+        {
+          "name": "2. Geocode - Hanoi Old Quarter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Phố cổ Hà Nội, Vietnam\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        },
+        {
+          "name": "3. Directions - HCM to Tan Son Nhat Airport",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originAddress\": \"Chợ Bến Thành, TP. Hồ Chí Minh\",\n  \"destinationAddress\": \"Sân bay Tân Sơn Nhất, TP. Hồ Chí Minh\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/directions-by-address",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "directions-by-address"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Directions by Coordinates",
+      "item": [
+        {
+          "name": "1. Directions - NAVER to Seoul Station",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 37.3595963,\n    \"lng\": 127.1054328\n  },\n  \"destination\": {\n    \"lat\": 37.5544819,\n    \"lng\": 126.9707113\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/directions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "directions"]
+            }
+          }
+        },
+        {
+          "name": "2. Directions - Short Distance Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 37.5665,\n    \"lng\": 126.9780\n  },\n  \"destination\": {\n    \"lat\": 37.5700,\n    \"lng\": 126.9800\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/directions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "directions"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Error Handling Tests",
+      "item": [
+        {
+          "name": "1. Invalid - Empty Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        },
+        {
+          "name": "2. Invalid - Coordinates Out of Range",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"origin\": {\n    \"lat\": 200,\n    \"lng\": 127.1054328\n  },\n  \"destination\": {\n    \"lat\": 37.5665,\n    \"lng\": 126.9780\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/directions",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "directions"]
+            }
+          }
+        },
+        {
+          "name": "3. Invalid - Non-existent Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"asdfghjklqwertyuiop123456789\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Performance Tests",
+      "item": [
+        {
+          "name": "1. Long Distance Route",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"originAddress\": \"Seoul, South Korea\",\n  \"destinationAddress\": \"Busan, South Korea\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/directions-by-address",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "directions-by-address"]
+            }
+          }
+        },
+        {
+          "name": "2. Multiple Geocode Requests",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Gangnam Station, Seoul\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/location/geocode",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "location", "geocode"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
