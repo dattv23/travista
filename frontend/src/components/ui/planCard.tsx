@@ -1,4 +1,7 @@
-interface CardProps {
+
+import { DirectionsBusFilledOutlined, DirectionsSubwayFilledOutlined, StorefrontOutlined } from '@mui/icons-material';
+
+interface PlanCardProps {
   type: string;
   title: string;
   duration: string;
@@ -7,19 +10,19 @@ interface CardProps {
   numberOfStops: number | null;
 }
 
-export default function Card({
+export default function PlanCard({
   type,
   title,
   duration,
   estTime,
   summary,
   numberOfStops,
-}: CardProps) {
+}: PlanCardProps) {
 
   const iconList = [
     {type: "location", icon: ""},
-    {type: "bus", icon: ""},
-    {type: "subway", icon: ""},
+    {type: "bus", icon: <DirectionsBusFilledOutlined />},
+    {type: "subway", icon: <DirectionsSubwayFilledOutlined />},
   ];
   const transportation = ["bus", "subway"];
 
@@ -27,8 +30,8 @@ export default function Card({
 
 
   return (
-    <div>
-      <div>
+    <div className='flex gap-2 justify-start items-start'>
+      <div className='text-primary'>
         {displayingIcon ? displayingIcon.icon : "No icon"}
       </div>
       <div>
