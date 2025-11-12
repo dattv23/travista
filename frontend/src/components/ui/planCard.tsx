@@ -36,12 +36,12 @@ export default function PlanCard({
       </div>
       <div>
         <div>
-          <p>{title} <span>{duration}</span></p>
-          <p>Est. {estTime} {type in transportation && <span>{numberOfStops}</span>}</p>
+          <p className='w-full flex justify-betweenparagraph-p1-bold text-dark-text'>{title} <span className='paragraph-p3-medium text-secondary'>{duration}</span></p>
+          <p className='w-full flex justify-between paragraph-p4-medium text-sub-text'>Est. {estTime} {type in transportation && <span >{numberOfStops}</span>}</p>
         </div>
         {type === "location" && (
           <div>
-            <p>{summary}</p>
+            <p className='paragraph-p3-regular text-dark-text'>{summary}</p>
           </div>
         )}
         {/* Expanded content (Details) */}
