@@ -7,6 +7,7 @@ import '@/styles/globals.css'
 
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({
   variable: '--font-inter',
@@ -34,7 +35,9 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <Header />
         <main className=''>
-          {children}
+          <AuthProvider >
+            {children}
+          </AuthProvider>
         </main>
         <Footer />
       </body>
