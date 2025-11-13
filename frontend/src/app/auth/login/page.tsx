@@ -13,6 +13,13 @@ interface LoginFormData {
   password: string;
 }
 
+const errorTexts = [
+  {name: 'email', type: 'empty', text: 'Please enter a valid email'},
+  {name: 'password', type: 'empty', text: 'Please enter a valid password'},
+  {name: 'email', type: 'incorrect', text: 'Email is incorrect'},
+  {name: 'password', type: 'incorrect', text: 'Password is incorrect'},
+];
+
 export default function Login() {
   const { userLoggedIn, login, googleLogin, isLoading, user } = useAuth();
   const router = useRouter();
@@ -20,6 +27,10 @@ export default function Login() {
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({ email: '', password: '' });
+  const [fieldErrors, setFieldErrors] = useState<{ email: string | null; password: string | null; }>({
+    email: null,
+    password: null,
+  });
 
   useEffect(() => {
     if (!isLoading && userLoggedIn) {
@@ -31,8 +42,36 @@ export default function Login() {
     e.preventDefault();
     if (isLoggingIn) return;
 
+    setError(null); 
+    setFieldErrors({ email: null, password: null });
+
+    const { email, password } = loginFormData;
+    let newFieldErrors: { email: string | null; password: string | null; } = { email: null, password: null };
+
+    let hasError = false;
+
+    if (!email) {
+      hasError = true;
+      newFieldErrors.email =
+        errorTexts.find(
+          (err) => err.name === 'email' && err.type === 'empty'
+        )?.text || 'Please enter a valid email';
+    }
+
+    if (!password) {
+      hasError = true;
+      newFieldErrors.password =
+        errorTexts.find(
+          (err) => err.name === 'password' && err.type === 'empty'
+        )?.text || 'Please enter a valid password';
+    }
+
+    if (hasError) {
+      setFieldErrors(newFieldErrors);
+      return;
+    }
+
     setIsLoggingIn(true);
-    setError(null);
 
     try {
       await login(loginFormData.email, loginFormData.password);
@@ -84,9 +123,15 @@ export default function Login() {
                 placeholder="Email address"
                 value={loginFormData.email}
                 autoComplete="new-email"
-                required
-                className='px-4 py-2.5 border-2 rounded-sm border-sub-text bg-transparent text-dark-text paragraph-p3 regular transition focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary'
+                className={`px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition focus:outline-none focus:bg-white/80 
+                  ${fieldErrors.email 
+                    ? 'border-red-500' 
+                    : 'border-sub-text not-placeholder-shown:border-primary focus:border-primary'
+                  }`}
               />
+              {fieldErrors.email && (
+                <p className="text-red-500 text-sm mt-1">* {fieldErrors.email}</p>
+              )}
             </div>
             {/* Password */}
             <div className={'flex flex-col gap-2'}>
@@ -101,9 +146,15 @@ export default function Login() {
                 placeholder="Password"
                 value={loginFormData.password}
                 autoComplete="new-password"
-                required
-                className='px-4 py-2.5 border-2 rounded-sm border-sub-text bg-transparent text-dark-text paragraph-p3 regular transition focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary'
+                className={`px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition focus:outline-none focus:bg-white/80 
+                  ${fieldErrors.password
+                    ? 'border-red-500' 
+                    : 'border-sub-text not-placeholder-shown:border-primary focus:border-primary'
+                  }`}
               />
+              {fieldErrors.password && (
+                <p className="text-red-500 text-sm mt-1">* {fieldErrors.password}</p>
+              )}
             </div>
             <button type="submit" disabled={isLoggingIn} className={'paragraph-p3-medium bg-primary py-2.5 rounded-[8px] text-light-text transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]'}>
               {isLoggingIn ? 'Logging in...' : 'Log in'}
@@ -132,7 +183,7 @@ export default function Login() {
             className={'flex items-center justify-center gap-2 py-2.5 border-2 border-[color-mix(in_srgb,var(--color-divider),black_10%)] rounded-[8px] text-dark-text bg-white/80 paragraph-p3-medium transition cursor-pointer hover:bg-gray-50'}
           >
             <svg
-              className={'w-[32px] h-[32px]'}
+              className={'w-[26px] h-[26px]'}
               xmlns="http://www.w3.org/2000/svg"
               x="0px"
               y="0px"
