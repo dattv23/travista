@@ -8,8 +8,11 @@ import { Transition } from "@headlessui/react";
 
 import { LanguageOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined } from '@mui/icons-material';
 import logo from "@/assets/logo.svg";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Header() {
+
+  const { userLoggedIn, isLoading } = useAuth();
 
   const navLinks = [
     { id: 1, title: "Home", path: "/" },
@@ -95,15 +98,25 @@ export default function Header() {
               </div>
             </Transition>
           </div>
-
-          <Link href={'/auth/login'} className={`
-              px-[25px] py-2.5 flex justify-center items-center border-2 rounded-[8px] transition-all bg-primary text-light-text border-transparent hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]
-            `}>Log in</Link>
-
-          <Link href={'/auth/signup'} className={`
-              px-[25px] py-2.5 bg-transparent flex justify-center items-center border-2 rounded-[8px] transition-all
-              text-primary border-primary hover:bg-hover
-            `}>Sign up</Link>
+          
+          {userLoggedIn ? (
+            <>
+              <button 
+                className="px-[25px] py-2.5 flex justify-center items-center border-2 rounded-[8px] transition-all bg-transparent text-[color-mix(in_srgb,var(--color-sub-text),black_10%)] hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]"
+              >Username</button>
+            </>
+          ) : (
+            <>
+              <Link href={'/auth/login'} className={`
+                  px-[25px] py-2.5 flex justify-center items-center border-2 rounded-[8px] transition-all bg-primary text-light-text border-transparent hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]
+                `}>Log in</Link>
+    
+              <Link href={'/auth/signup'} className={`
+                  px-[25px] py-2.5 bg-transparent flex justify-center items-center border-2 rounded-[8px] transition-all
+                  text-primary border-primary hover:bg-hover
+                `}>Sign up</Link>
+            </>
+          )}
         </div>
       </div>
     </header>
