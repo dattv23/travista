@@ -9,9 +9,17 @@ interface User {
   avatarUrl?: string;
 }
 
+interface RegisterData {
+  firstname: string;
+  lastname: string;
+  email: string;
+  password: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  register: (data: RegisterData) => Promise<void>;
   login: (email: string, password: string) => Promise<void>
   googleLogin: () => void;
   logout: () => Promise<void>
@@ -46,6 +54,20 @@ export function AuthProvider({ children } : { children: ReactNode}) {
 
     checkUserSession();
   }, [])
+
+  const register = async (data: RegisterData) => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data), 
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Registration failed.');
+    }
+  };
 
   const login = async (email: string, password: string) => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/login`, {
@@ -82,7 +104,7 @@ export function AuthProvider({ children } : { children: ReactNode}) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, register, login, googleLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

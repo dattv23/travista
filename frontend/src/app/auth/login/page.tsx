@@ -18,8 +18,13 @@ export default function Login() {
   const router = useRouter();
 
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); 
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({ email: '', password: '' });
+  
+  const [fieldErrors, setFieldErrors] = useState<LoginFormData>({
+    email: '',
+    password: ''
+  });
 
   useEffect(() => {
     if (!isLoading && userLoggedIn) {
@@ -31,13 +36,29 @@ export default function Login() {
     e.preventDefault();
     if (isLoggingIn) return;
 
+    setError(null); 
+    
+    const newErrors: LoginFormData = { email: '', password: '' };
+    if (!loginFormData.email.trim()) {
+      newErrors.email = 'Please provide a valid email';
+    }
+    if (!loginFormData.password.trim()) {
+      newErrors.password = 'Please provide a valid password';
+    }
+
+    if (newErrors.email || newErrors.password) {
+      setFieldErrors(newErrors);
+      setIsLoggingIn(false); 
+      return;
+    }
+
+    setFieldErrors({ email: '', password: '' });
     setIsLoggingIn(true);
-    setError(null);
 
     try {
       await login(loginFormData.email, loginFormData.password);
     } catch (error) {
-      setError((error as Error).message);
+      setError((error as Error).message); 
       setIsLoggingIn(false);
     }
   };
@@ -45,10 +66,8 @@ export default function Login() {
   const handleGoogleLogIn = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (isLoggingIn) return;
-
     setIsLoggingIn(true);
     setError(null);
-
     googleLogin();
   };
 
@@ -58,6 +77,13 @@ export default function Login() {
       ...prev,
       [name]: value,
     }));
+
+    if (value) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        [name]: '' 
+      }));
+    }
   };
 
   if (isLoading) {
@@ -70,7 +96,8 @@ export default function Login() {
         <h1 className={'header-h2 text-dark-text mb-8'}>Login</h1>
         <div className={'flex flex-col gap-2'}>
           <form onSubmit={handleSubmit} className={'flex flex-col gap-8'} autoComplete="off">
-            {error && <p>{error}</p>}
+            {error && <p className="text-red-500 text-sm -my-4">{error}</p>}
+            
             {/* Email */}
             <div className={'flex flex-col gap-2'}>
               <label 
@@ -84,10 +111,15 @@ export default function Login() {
                 placeholder="Email address"
                 value={loginFormData.email}
                 autoComplete="new-email"
-                required
-                className='px-4 py-2.5 border-2 rounded-sm border-sub-text bg-transparent text-dark-text paragraph-p3 regular transition focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary'
+                className={`
+                  px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
+                  focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
+                  ${fieldErrors.email ? 'border-red-500' : 'border-sub-text'}
+                `}
               />
+              {fieldErrors.email && <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>}
             </div>
+            
             {/* Password */}
             <div className={'flex flex-col gap-2'}>
               <label 
@@ -101,11 +133,16 @@ export default function Login() {
                 placeholder="Password"
                 value={loginFormData.password}
                 autoComplete="new-password"
-                required
-                className='px-4 py-2.5 border-2 rounded-sm border-sub-text bg-transparent text-dark-text paragraph-p3 regular transition focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary'
+                className={`
+                  px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
+                  focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
+                  ${fieldErrors.password ? 'border-red-500' : 'border-sub-text'}
+                `}
               />
+              {fieldErrors.password && <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>}
             </div>
-            <button type="submit" disabled={isLoggingIn} className={'paragraph-p3-medium bg-primary py-2.5 rounded-[8px] text-light-text transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]'}>
+            
+            <button type="submit" disabled={isLoggingIn} className={'paragraph-p3-medium bg-primary py-2.5 rounded-[8px] text-light-text transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] disabled:opacity-50'}>
               {isLoggingIn ? 'Logging in...' : 'Log in'}
             </button>
           </form>

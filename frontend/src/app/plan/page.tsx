@@ -10,16 +10,16 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import { FmdGoodOutlined, CalendarMonthOutlined, HourglassEmptyOutlined, PeopleAltOutlined, MonetizationOnOutlined, StarBorderOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined } from '@mui/icons-material';
 
-export default function Plan() {
+const questions = [
+  {question: 'Where do you want to go?', icon: <FmdGoodOutlined />, type: 'text', options: [], placeholder: 'Enter a location'},
+  {question: 'What is your start calendar?', icon: <CalendarMonthOutlined />, type: 'calendar', options: [], placeholder: 'DD/MM/YYYY'},
+  {question: 'How many days will you spend for your trip?', icon: <HourglassEmptyOutlined />, type: 'dropdown', options: ['1 day', '2 days', '3 days', '4 days', '5 days', '6 days', '7 days'], placeholder: ''},
+  {question: 'How many people do you go with?', icon: <PeopleAltOutlined />, type: 'dropdown', options: ['Alone', '2 people', '3 people', '4 people', '5 people'], placeholder: ''},
+  {question: 'What is your budget?', icon: <MonetizationOnOutlined />, type: 'dropdown', options: ['Option 1', 'Option 2', 'Option 3'], placeholder: ''},
+  {question: 'What is your theme?', icon: <StarBorderOutlined />, type: 'text', options: [], placeholder: 'e.g., “A traditional food tour”'},
+];
 
-  const questions = [
-    {question: 'Where do you want to go?', icon: <FmdGoodOutlined />, type: 'text', options: [], placeholder: 'Enter a location'},
-    {question: 'What is your start calendar?', icon: <CalendarMonthOutlined />, type: 'calendar', options: [], placeholder: 'DD/MM/YYYY'},
-    {question: 'How many days will you spend for your trip?', icon: <HourglassEmptyOutlined />, type: 'dropdown', options: ['1 day', '2 days', '3 days', '4 days', '5 days', '6 days', '7 days'], placeholder: ''},
-    {question: 'How many people do you go with?', icon: <PeopleAltOutlined />, type: 'dropdown', options: ['Alone', '2 people', '3 people', '4 people', '5 people'], placeholder: ''},
-    {question: 'What is your budget?', icon: <MonetizationOnOutlined />, type: 'dropdown', options: ['Option 1', 'Option 2', 'Option 3'], placeholder: ''},
-    {question: 'What is your theme?', icon: <StarBorderOutlined />, type: 'text', options: [], placeholder: 'e.g., “A traditional food tour”'},
-  ];
+export default function Plan() {
 
   const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
   const [answers, setAnswers] = useState<{ [key: number]: string }>(() => {

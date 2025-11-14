@@ -108,7 +108,6 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         <div className='w-3/4 bg-gray-400 h-screen'>
           <DynamicNaverMap
             path={itinerary}
-            mapZoom={13}
           />
         </div>
       </section>

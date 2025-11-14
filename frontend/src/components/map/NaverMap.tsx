@@ -12,226 +12,223 @@ interface MapPoint {
 interface NaverMapProps {
   path?: MapPoint[];
   mapZoom?: number;
-  center?: MapPoint; 
+  center?: MapPoint;
   onPinClick?: (point: MapPoint) => void;
 }
 
 const NaverMap: React.FC<NaverMapProps> = ({
   path = [],
   center,
-  mapZoom = 15, // Default 
-  onPinClick
+  mapZoom = 15, // Default
+  onPinClick,
 }) => {
-
   const mapElement = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any | null>(null);
-
   const panoramaRef = useRef<HTMLDivElement | null>(null);
-  const infoWindowRef = useRef<any | null>(null); 
+  
+  const panoramaInstanceRef = useRef<any | null>(null);
 
   const [isStreetViewVisible, setIsStreetViewVisible] = useState(false);
   const markersRef = useRef<any[]>([]);
-  const [naver, setNaver] = useState<any>(null); 
   const polylineRef = useRef<any>(null);
 
-  // Wait for the Naver script to be ready
+  const [isNaverReady, setIsNaverReady] = useState(false);
+
+  // Poll for Naver API readiness
   useEffect(() => {
-    if (window.naver) {
-      setNaver(window.naver);
-    }
-  }, []);
+    const intervalId = setInterval(() => {
+      if (
+        window.naver &&
+        window.naver.maps &&
+        window.naver.maps.Map &&
+        window.naver.maps.LatLng &&
+        window.naver.maps.Marker &&
+        window.naver.maps.Event &&
+        window.naver.maps.Polyline
+      ) {
+        setIsNaverReady(true);
+        clearInterval(intervalId);
+      }
+    }, 100); 
+    return () => clearInterval(intervalId);
+  }, []); 
 
-  // Initialize the map and InfoWindow (runs only ONCE)
+  // Initialize the map
   useEffect(() => {
-    if (!naver || !mapElement.current || mapInstanceRef.current) {
-      return; 
+    if (!isNaverReady || !mapElement.current || mapInstanceRef.current) {
+      return;
     }
 
-    const initialCenter = center || (path.length > 0 ? path[0] : { lat: 37.5665, lng: 126.9780 });
-    const location = new naver.maps.LatLng(initialCenter.lat, initialCenter.lng);
+    const initialCenter =
+      center || (path.length > 0 ? path[0] : { lat: 37.5665, lng: 126.9780 });
+    const location = new window.naver.maps.LatLng(
+      initialCenter.lat,
+      initialCenter.lng
+    );
 
-    // -- Initiate map --
     const mapOptions = {
       center: location,
       zoom: mapZoom,
       zoomControl: true,
       zoomControlOptions: {
-        position: naver.maps.Position.TOP_RIGHT,
+        position: window.naver.maps.Position.TOP_RIGHT,
       },
     };
-    
-    // Create the map and store the instance
-    mapInstanceRef.current = new naver.maps.Map(mapElement.current, mapOptions);
 
-    // Create a single InfoWindow instance to be reused
-    infoWindowRef.current = new naver.maps.InfoWindow({
-      content: '', // Content will be set dynamically on click
-      backgroundColor: '#fff',
-      borderColor: '#007bff',
-      borderWidth: 1,
-      anchorSize: new naver.maps.Size(10, 10),
-      pixelOffset: new naver.maps.Point(0, -15)
-    });
+    mapInstanceRef.current = new window.naver.maps.Map(
+      mapElement.current,
+      mapOptions
+    );
+  }, [isNaverReady, center, path, mapZoom]); // Added missing dependencies
 
-  }, [naver]); 
-
-  
   // Zooms/Pans the map
   useEffect(() => {
-    if (mapInstanceRef.current && center && naver) {
-      mapInstanceRef.current.panTo(new naver.maps.LatLng(center.lat, center.lng));
-      mapInstanceRef.current.setZoom(mapZoom);
+    if (!isNaverReady || !mapInstanceRef.current || !center) {
+      return;
     }
-  }, [center, mapZoom, naver]);
+    mapInstanceRef.current.panTo(
+      new window.naver.maps.LatLng(center.lat, center.lng)
+    );
+    mapInstanceRef.current.setZoom(mapZoom);
+  }, [isNaverReady, center, mapZoom]);
 
-
-  // Update markers and polyline when 'path' changes
+  // Update markers and polyline
   useEffect(() => {
     const map = mapInstanceRef.current;
-    const infoWindow = infoWindowRef.current;
-    if (!map || !naver || !infoWindow) return;
+    if (!isNaverReady || !map) return;
 
-    // -- Clean old markers and polyline -- 
+    // Clean old markers and polyline
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
-
     if (polylineRef.current) {
       polylineRef.current.setMap(null);
     }
 
-    // -- Draw new markers --
+    // Draw new markers
     path.forEach((point) => {
-      const position = new naver.maps.LatLng(point.lat, point.lng);
-      const marker = new naver.maps.Marker({
+      const position = new window.naver.maps.LatLng(point.lat, point.lng);
+
+      const largerIcon = {
+        url: '/icons/pin.png', 
+        scaledSize: new window.naver.maps.Size(36, 56),
+        origin: new window.naver.maps.Point(0, 0),
+        anchor: new window.naver.maps.Point(18, 56) 
+      };
+
+      const marker = new window.naver.maps.Marker({
         position: position,
         map: map,
+        icon: largerIcon
       });
 
-      naver.maps.Event.addListener(marker, 'click', () => {
+      window.naver.maps.Event.addListener(marker, "click", () => {
         if (onPinClick) {
           onPinClick(point);
         }
-
-        const contentString = `
-          <div style="padding: 10px; min-width: 150px; text-align: center; font-family: Arial, sans-serif;">
-            <h4 style="margin: 0 0 10px 0; font-size: 14px;">${point.name || 'Location'}</h4>
-            <button id="street-view-btn" style="background: #007bff; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-              View Street View
-            </button>
-          </div>
-        `;
-        
-        infoWindow.setContent(contentString);
-        infoWindow.open(map, marker);
-
-        naver.maps.Event.once(infoWindow, 'domready', () => {
-          const btn = document.getElementById('street-view-btn');
-          if (btn) {
-            btn.onclick = null; 
-            btn.onclick = () => {
-              console.log("click street view");
-              showPanorama(position);
-              infoWindow.close();
-            };
-          }
-        });
+        showPanorama(position);
       });
 
       markersRef.current.push(marker);
     });
 
-    // -- Draw new polyline --
+    // Draw new polyline
     if (path.length > 1) {
       const naverPath = path.map(
-        (point) => new naver.maps.LatLng(point.lat, point.lng)
+        (point) => new window.naver.maps.LatLng(point.lat, point.lng)
       );
-
-      const polyline = new naver.maps.Polyline({
+      const polyline = new window.naver.maps.Polyline({
         path: naverPath,
         map: map,
-        strokeColor: '#5347AA',
+        strokeColor: "rgb(45,111,247)",
         strokeWeight: 6,
         strokeOpacity: 0.9,
       });
       polylineRef.current = polyline;
     }
-  }, [path, naver, onPinClick]); 
+  }, [isNaverReady, path, onPinClick]);
 
   const showPanorama = (position: any) => {
-    // Check if panoEl exists before calling the service
-    const panoEl = panoramaRef.current;
-    if (!panoEl) return;
+    if (!panoramaRef.current || !window.naver) {
+      console.error("Panorama container or Naver API not ready.");
+      return;
+    }
 
-    naver.maps.Service.getPanoramaByLocation(position, (status: any, panoData: any) => {
-      if (status !== naver.maps.Service.Status.OK) {
-        alert("No Street View available for this location.");
-        return;
-      }
-      
-      const panorama = new naver.maps.Panorama(panoEl, {
-        position: panoData.result.latlng,
-        panoId: panoData.result.panoId,
-        flightSpot: true,
-        zoomControl: true,
-      });
-      
-      // Now that the panorama is initialized in the (hidden) div,
-      // make the div visible and tell the panorama to show itself.
-      setIsStreetViewVisible(true);
-      panorama.setVisible(true);
+    const panoEl = panoramaRef.current;
+
+    if (panoramaInstanceRef.current) {
+      panoramaInstanceRef.current.destroy();
+      panoramaInstanceRef.current = null;
+    }
+
+    // 1. Create the panorama instance, but keep it invisible
+    const panorama = new window.naver.maps.Panorama(panoEl, {
+      position: position, 
+      visible: false,     
+      flightSpot: true,
+      zoomControl: true,
     });
+    
+    // Store the instance
+    panoramaInstanceRef.current = panorama;
+
+    // 2. Add an event listener for 'pano_status'
+    window.naver.maps.Event.addListener(
+      panorama,
+      "pano_status",
+      function (status: string) {
+        if (status === "OK") {
+          setIsStreetViewVisible(true);
+          panorama.setVisible(true);
+        } else {
+          console.log("No Street View available for this location.");
+          if (panoramaInstanceRef.current) {
+            panoramaInstanceRef.current.destroy();
+            panoramaInstanceRef.current = null;
+          }
+        }
+      }
+    );
   };
 
   const closeStreetView = () => {
     setIsStreetViewVisible(false);
-    // You might want to explicitly destroy the panorama instance if the API provides a way
-    // but simply hiding it is usually fine.
   };
 
+  useEffect(() => {
+    if (!isStreetViewVisible && panoramaInstanceRef.current) {
+      panoramaInstanceRef.current.destroy();
+      panoramaInstanceRef.current = null;
+    }
+  }, [isStreetViewVisible]);
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className="w-full h-full relative">
       {/* 1. main container */}
-      <div 
-        ref={mapElement} 
-        style={{ width: '100%', height: '100%' }} 
-      />
+      <div ref={mapElement} className="w-full h-full" />
 
       {/* 2. The Street View container */}
-      <div 
-        ref={panoramaRef} 
+      <div
+        ref={panoramaRef}
         style={{
-          width: '100%',
-          height: '100%',
-          position: 'absolute',
+          width: "100%",
+          height: "100%",
+          position: "absolute",
           top: 0,
           left: 0,
-          // --- CHANGED ---
-          // Use visibility and zIndex instead of display
-          // This keeps the element in the DOM for the API to attach to
-          visibility: isStreetViewVisible ? 'visible' : 'hidden',
-          zIndex: isStreetViewVisible ? 10 : -1, // Show above map or hide behind
-          // --- END CHANGED ---
+          visibility: isStreetViewVisible ? "visible" : "hidden",
+          zIndex: isStreetViewVisible ? 10 : -1,
         }}
       >
         {/* 3. Close Button for Street View */}
         {isStreetViewVisible && (
           <button
             onClick={closeStreetView}
-            style={{
-              position: 'absolute',
-              top: '20px',
-              left: '20px',
-              // --- CHANGED ---
-              // Make sure zIndex is higher than the panorama container
-              zIndex: 20, 
-              // --- END CHANGED ---
-              padding: '10px',
-              backgroundColor: 'white',
-              border: '1px solid #ccc',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
+            className="
+              absolute top-5 left-5 z-20 
+              p-2.5 bg-white 
+              border border-gray-300 rounded-md 
+              cursor-pointer font-bold
+            "
           >
             Close Street View
           </button>
