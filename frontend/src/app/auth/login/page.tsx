@@ -13,13 +13,6 @@ interface LoginFormData {
   password: string;
 }
 
-const errorTexts = [
-  {name: 'email', type: 'empty', text: 'Please enter a valid email'},
-  {name: 'password', type: 'empty', text: 'Please enter a valid password'},
-  {name: 'email', type: 'incorrect', text: 'Email is incorrect'},
-  {name: 'password', type: 'incorrect', text: 'Password is incorrect'},
-];
-
 export default function Login() {
   const { userLoggedIn, login, googleLogin, isLoading, user } = useAuth();
   const router = useRouter();
@@ -28,7 +21,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null); 
   const [loginFormData, setLoginFormData] = useState<LoginFormData>({ email: '', password: '' });
   
-  const [fieldErrors, setFieldErrors] = useState<LoginFormData>({
+  const [fieldErrors, setFieldErrors] = useState({
     email: '',
     password: ''
   });
@@ -44,37 +37,8 @@ export default function Login() {
     if (isLoggingIn) return;
 
     setError(null); 
-    setFieldErrors({ email: null, password: null });
-
-    const { email, password } = loginFormData;
-    let newFieldErrors: { email: string | null; password: string | null; } = { email: null, password: null };
-
-    let hasError = false;
-
-    if (!email) {
-      hasError = true;
-      newFieldErrors.email =
-        errorTexts.find(
-          (err) => err.name === 'email' && err.type === 'empty'
-        )?.text || 'Please enter a valid email';
-    }
-
-    if (!password) {
-      hasError = true;
-      newFieldErrors.password =
-        errorTexts.find(
-          (err) => err.name === 'password' && err.type === 'empty'
-        )?.text || 'Please enter a valid password';
-    }
-
-    if (hasError) {
-      setFieldErrors(newFieldErrors);
-      return;
-    }
-
-    setError(null); 
     
-    const newErrors: LoginFormData = { email: '', password: '' };
+    const newErrors = { email: '', password: '' };
     if (!loginFormData.email.trim()) {
       newErrors.email = 'Please provide a valid email';
     }
@@ -82,6 +46,7 @@ export default function Login() {
       newErrors.password = 'Please provide a valid password';
     }
 
+    // 2. If there are errors, update state and stop
     if (newErrors.email || newErrors.password) {
       setFieldErrors(newErrors);
       setIsLoggingIn(false); 
@@ -94,7 +59,7 @@ export default function Login() {
     try {
       await login(loginFormData.email, loginFormData.password);
     } catch (error) {
-      setError((error as Error).message); 
+      setError((error as Error).message);
       setIsLoggingIn(false);
     }
   };
@@ -117,7 +82,7 @@ export default function Login() {
     if (value) {
       setFieldErrors((prev) => ({
         ...prev,
-        [name]: '' 
+        [name]: ''
       }));
     }
   };
@@ -182,6 +147,7 @@ export default function Login() {
               {isLoggingIn ? 'Logging in...' : 'Log in'}
             </button>
           </form>
+          
           <p className={'text-center paragraph-p4-regular text-dark-text mt-2.5'}>
             Don't have an account?
             <span className='ml-1.5 text-primary hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)] transition'>
@@ -205,7 +171,7 @@ export default function Login() {
             className={'flex items-center justify-center gap-2 py-2.5 border-2 border-[color-mix(in_srgb,var(--color-divider),black_10%)] rounded-[8px] text-dark-text bg-white/80 paragraph-p3-medium transition cursor-pointer hover:bg-gray-50'}
           >
             <svg
-              className={'w-[26px] h-[26px]'}
+              className={'w-[32px] h-[32px]'}
               xmlns="http://www.w3.org/2000/svg"
               x="0px"
               y="0px"
