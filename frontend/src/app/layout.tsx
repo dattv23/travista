@@ -29,7 +29,7 @@ export default function RootLayout({
       <head>
         <Script 
           strategy='beforeInteractive'
-          src={`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NAVER_MAP_CLIENT_ID}`}
+          src={`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=panorama`}
         />
       </head>
       <body className={`${inter.variable} antialiased`}>

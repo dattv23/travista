@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import loginImg from '@/assets/images/login-img.png';
+import loginImg from '@/assets/images/login-image.png';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 
