@@ -33,13 +33,13 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} antialiased`}>
-        <Header />
-        <main className=''>
-          <AuthProvider >
-            {children}
-          </AuthProvider>
-        </main>
-        <Footer />
+        <AuthProvider >
+          <Header />
+          <main className=''>
+              {children}
+          </main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )
