@@ -159,7 +159,7 @@ export const plannerService = {
   },
 
   async generateItinerary(state: IItineraryState): Promise<IItineraryState> {
-    logger.info('Generating itinerary with Naver HyperCLOVA X...')
+    logger.info('Generating itinerary with Naver HyperCLOVA HCX-007...')
 
     const userInput = `
       - Destination: (${state.userInput.destination.lat}, ${state.userInput.destination.lng}) 
@@ -182,35 +182,82 @@ export const plannerService = {
     `
     const prompt = smartTripPrompt.replace('{{USER_INPUT}}', userInput).replace('{{TOTAL_DAYS}}', state.userInput.numberOfDays.toString()).replace('{{ALL_PLACES_DATA}}', allPlacesData)
 
-    const response = await axios.post(
-      `https://clovastudio.stream.ntruss.com/v3/chat-completions/HCX-005`,
-      {
-        messages: [
-          { role: 'system', content: 'You are a helpful Korean travel planning assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        maxTokens: 1800,
-        temperature: 0.65,
-        topP: 0.9
-      },
-      {
-        headers: {
-          // 'X-NCP-CLOVASTUDIO-API-KEY': process.env.NAVER_CLOVA_API_KEY!,
-          // 'X-NCP-CLOVASTUDIO-API-SECRET': process.env.NAVER_CLOVA_API_SECRET!,
-          // 'X-NCP-CLOVASTUDIO-PROJECT-ID': process.env.NAVER_CLOVA_PROJECT_ID!,
-          Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
-          'Content-Type': 'application/json'
+    try {
+      const response = await axios.post(
+        `https://clovastudio.stream.ntruss.com/v3/chat-completions/HCX-007`,
+        {
+          messages: [
+            { role: 'system', content: 'You are an AI assistant that must respond ONLY in valid JSON following the schema.' },
+            { role: 'user', content: prompt }
+          ],
+          topP: 0.8,
+          topK: 0,
+          maxCompletionTokens: 10000,
+          temperature: 0.5,
+          repetitionPenalty: 1.1,
+          thinking: { effort: 'none' },
+          stop: [],
+          responseFormat: {
+            type: 'json',
+            schema: {
+              type: 'object',
+              properties: {
+                days: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      day_index: { type: 'number' },
+                      date: { type: 'string' },
+                      timeline: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            index: { type: 'number' },
+                            name: { type: 'string' },
+                            type: { type: 'string', enum: ['attraction', 'restaurant'] },
+                            start_time: { type: 'string' },
+                            end_time: { type: 'string' },
+                            duration_minutes: { type: 'number' },
+                            lat: { type: ['number', 'null'] },
+                            lng: { type: ['number', 'null'] },
+                            note: { type: 'string' }
+                          },
+                          required: ['index', 'name', 'type', 'start_time', 'end_time', 'duration_minutes', 'lat', 'lng', 'note']
+                        }
+                      }
+                    },
+                    required: ['day_index', 'date', 'timeline']
+                  }
+                }
+              },
+              required: ['days']
+            }
+          }
+        },
+        {
+          headers: {
+            // 'X-NCP-CLOVASTUDIO-API-KEY': process.env.NAVER_CLOVA_API_KEY!,
+            // 'X-NCP-CLOVASTUDIO-API-SECRET': process.env.NAVER_CLOVA_API_SECRET!,
+            // 'X-NCP-CLOVASTUDIO-PROJECT-ID': process.env.NAVER_CLOVA_PROJECT_ID!,
+            Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
+            'Content-Type': 'application/json'
+          }
         }
-      }
-    )
+      )
 
-    state.itinerary = response.data.result?.message?.content || ''
+      state.itinerary = response.data.result?.message?.content || ''
 
-    logger.info('Itinerary generation completed.')
-    const itineraryPreview = parseItinerary(state.itinerary)
-    if (itineraryPreview) logger.debug(`Itinerary preview: ${itineraryPreview.toString()}`)
-    else logger.warn('Failed to parse itinerary preview for logging.')
-    return state
+      logger.info('Itinerary generation completed.')
+      const itineraryPreview = parseItinerary(state.itinerary)
+      if (itineraryPreview) logger.debug(`Itinerary preview: ${itineraryPreview.toString()}`)
+      else logger.warn('Failed to parse itinerary preview for logging.')
+      return state
+    } catch (error) {
+      logger.error('Error generating itinerary:', error)
+      throw error
+    }
   },
 
   async executePlannerWorkflow(userInput: IUserInput): Promise<IItineraryState> {
