@@ -5,229 +5,170 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext'; // <-- ADD THIS
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
-interface RegisterFormData {
-  lastname: string;
-  firstname: string;
-  email: string;
-  password: string;
-  confirmpassword: string;
+// Validation Rules
+const registerSchema = z.object({
+  lastname: z.string().min(1, 'Please enter your last name'),
+  firstname: z.string().min(1, 'Please enter your first name'),
+  email: z.string().email('Please provide a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmpassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.password === data.confirmpassword, {
+  message: "Password does not match",
+  path: ["confirmpassword"], 
+});
+
+type RegisterFormData = z.infer<typeof registerSchema>;
+
+// Reusable Input Component 
+interface FormInputProps {
+  label: string;
+  name: keyof RegisterFormData;
+  type?: string;
+  value: string;
+  error?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
 }
 
+const FormInput = ({ label, name, type = "text", value, error, onChange, placeholder }: FormInputProps) => (
+  <div className="flex flex-col gap-2">
+    <label htmlFor={name} className="paragraph-p2-medium text-dark-text">
+      {label}
+    </label>
+    <input
+      name={name}
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className={`
+        px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
+        focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
+        ${error ? 'border-red-500' : 'border-sub-text'}
+      `}
+    />
+    {error && <p className="text-red-500 text-sm mt-1">* {error}</p>}
+  </div>
+);
+
+interface InputConfig {
+  id: number;
+  name: keyof RegisterFormData; 
+  label: string;
+  type: string;
+  placeholder: string;
+}
+
+const inputs: InputConfig[] = [
+  { id: 1, name: 'lastname', label: 'Last name', type: 'text', placeholder: 'Last name' },
+  { id: 2, name: 'firstname', label: 'First name', type: 'text', placeholder: 'First name' },
+  { id: 3, name: 'email', label: 'Email', type: 'email', placeholder: 'Email address' },
+  { id: 4, name: 'password', label: 'Password', type: 'password', placeholder: 'Password' },
+  { id: 5, name: 'confirmpassword', label: 'Confirm Password', type: 'password', placeholder: 'Confirm Password' },
+];
+
 export default function Register() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { register } = useAuth(); 
-
-  const [registerFormData, setRegisterFormData] = useState<RegisterFormData>({
-    lastname: '',
-    firstname: '',
-    email: '',
-    password: '',
-    confirmpassword: '',
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState<RegisterFormData>({
+    lastname: '', firstname: '', email: '', password: '', confirmpassword: '',
   });
-  const [fieldErrors, setFieldErrors] = useState<RegisterFormData>({
-    lastname: '',
-    firstname: '',
-    email: '',
-    password: '',
-    confirmpassword: '',
-  });
+  
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>({});
 
-  const isEmpty = (value: string) => !value.trim();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    if (fieldErrors[name as keyof RegisterFormData]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    setError(null);
+    setGlobalError(null);
+    setFieldErrors({}); 
 
-    const newErrors: RegisterFormData = {
-      lastname: '',
-      firstname: '',
-      email: '',
-      password: '',
-      confirmpassword: '',
-    };
+    const validation = registerSchema.safeParse(formData);
 
-    if (!registerFormData.lastname.trim()) {
-      newErrors.lastname = 'Please enter your last name';
-    }
-    if (!registerFormData.firstname.trim()) {
-      newErrors.firstname = 'Please enter your first name';
-    }
-    if (!registerFormData.email.trim()) {
-      newErrors.email = 'Please provide a valid email';
-    }
-    if (!registerFormData.password.trim()) {
-      newErrors.password = 'Please create a password';
-    }
-    if (!registerFormData.confirmpassword.trim()) {
-      newErrors.confirmpassword = 'Please confirm your password';
-    }
-
-    if (
-      registerFormData.password &&
-      registerFormData.confirmpassword &&
-      registerFormData.password !== registerFormData.confirmpassword
-    ) {
-      const matchError = 'Passwords do not match!';
-      newErrors.password = matchError;
-      newErrors.confirmpassword = matchError;
-    }
-
-    if (Object.values(newErrors).some(msg => msg)) {
-      setFieldErrors(newErrors);
-      setIsSubmitting(false);
+    if (!validation.success) {
+      const formattedErrors = validation.error.flatten().fieldErrors;
+      setFieldErrors({
+        lastname: formattedErrors.lastname?.[0],
+        firstname: formattedErrors.firstname?.[0],
+        email: formattedErrors.email?.[0],
+        password: formattedErrors.password?.[0],
+        confirmpassword: formattedErrors.confirmpassword?.[0],
+      });
       return;
     }
-    
-    setFieldErrors({ lastname: '', firstname: '', email: '', password: '', confirmpassword: '' });
+
     setIsSubmitting(true);
 
     try {
-      await register({
-        firstname: registerFormData.firstname,
-        lastname: registerFormData.lastname,
-        email: registerFormData.email,
-        password: registerFormData.password,
-      });
-
+      await register(validation.data);
       router.push('/auth/login');
-      
     } catch (err) {
-      setError((err as Error).message);
+      setGlobalError((err as Error).message);
       setIsSubmitting(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setRegisterFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
   return (
-    <>
-      <section className={'w-full min-h-screen px-4 md:px-5 xl:px-8 2xl:px-[220px] pt-[108px] flex items-center'}>
-        <div className={'w-1/2 flex flex-col px-6 lg:px-12 py-4 bg-white rounded-xl shadow-lg min-h-[900px] justify-center mx-6'}>
-          <h1 className={'header-h2 text-dark-text mb-8'}>Register</h1>
-          <div className={'flex flex-col gap-2'}>
-            <form onSubmit={handleSubmit} className={'flex flex-col gap-8'}>
-              {error && <p className={'text-red-600 text-sm -my-4'}>{error}</p>}
-              {/* Last name */}
-              <div className={'flex flex-col gap-2'}>
-                <label htmlFor="lname" className='paragraph-p2-medium text-dark-text'>Last name</label>
-                <input
-                  name="lastname"
-                  onChange={handleChange}
-                  type="text"
-                  placeholder="Last name"
-                  value={registerFormData.lastname}
-                  className={`
-                    px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
-                    focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
-                    ${fieldErrors.password ? 'border-red-500' : 'border-sub-text'}
-                  `}
-                />
-                {fieldErrors.lastname && <p className="text-red-500 text-sm mt-1">{fieldErrors.lastname}</p>}
-              </div>
-              {/* First name */}
-              <div className={'flex flex-col gap-2'}>
-                <label htmlFor="fname" className='paragraph-p2-medium text-dark-text'>First name</label>
-                <input
-                  name="firstname"
-                  onChange={handleChange}
-                  type="text"
-                  placeholder="First name"
-                  value={registerFormData.firstname}
-                  className={`
-                    px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
-                    focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
-                    ${fieldErrors.password ? 'border-red-500' : 'border-sub-text'}
-                  `}
-                />
-                {fieldErrors.firstname && <p className="text-red-500 text-sm mt-1">{fieldErrors.firstname}</p>}
-              </div>
-              {/* Email */}
-              <div className={'flex flex-col gap-2'}>
-                <label htmlFor="email" className='paragraph-p2-medium text-dark-text'>Email</label>
-                <input
-                  name="email"
-                  onChange={handleChange}
-                  type="email"
-                  placeholder="Email address"
-                  value={registerFormData.email}
-                  className={`
-                    px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
-                    focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
-                    ${fieldErrors.password ? 'border-red-500' : 'border-sub-text'}
-                  `}
-                />
-                {fieldErrors.email && <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>}
-              </div>
-              {/* Password */}
-              <div className={'flex flex-col gap-2'}>
-                <label htmlFor="pwd" className='paragraph-p2-medium text-dark-text'>Password</label>
-                <input
-                  name="password"
-                  onChange={handleChange}
-                  type="password"
-                  placeholder="Password"
-                  value={registerFormData.password}
-                  className={`
-                    px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
-                    focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
-                    ${fieldErrors.password ? 'border-red-500' : 'border-sub-text'}
-                  `}
-                />
-                {fieldErrors.password && <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>}
-              </div>
-              {/* Confirmed Password */}
-              <div className={'flex flex-col gap-2'}>
-                <label htmlFor="pwd" className='paragraph-p2-medium text-dark-text'>Confirm Password</label>
-                <input
-                  name="confirmpassword"
-                  onChange={handleChange}
-                  type="password"
-                  placeholder="Confirm Password"
-                  value={registerFormData.confirmpassword}
-                  className={`
-                    px-4 py-2.5 border-2 rounded-sm bg-transparent text-dark-text paragraph-p3 regular transition 
-                    focus:border-primary focus:outline-none focus:bg-white/80 not-placeholder-shown:border-primary
-                    ${fieldErrors.password ? 'border-red-500' : 'border-sub-text'}
-                  `}
-                />
-                {fieldErrors.confirmpassword && <p className="text-red-500 text-sm mt-1">{fieldErrors.confirmpassword}</p>}
-              </div>
-              <button type="submit" className={'paragraph-p3-medium bg-primary py-2.5 rounded-[8px] text-light-text transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]'}>
-                {isSubmitting ? 'Signing up...' : 'Sign up'}
-              </button>
-            </form>
-            <p className={'text-center paragraph-p4-regular text-dark-text mt-2.5'}>
-              Already have an account?
-              <span className='ml-1.5 text-primary hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)] transition'>
-                <Link className={''} href="/auth/login">
-                  Log in
-                </Link>
-              </span>
-            </p>
-          </div>
+    <section className="w-full min-h-screen px-4 md:px-5 xl:px-8 2xl:px-[220px] pt-[108px] flex items-center">
+      <div className="w-1/2 flex flex-col px-6 lg:px-12 py-4 bg-white rounded-xl shadow-lg min-h-[900px] justify-center mx-6">
+        <h1 className="header-h2 text-dark-text mb-8">Register</h1>
+        <div className="flex flex-col gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+            {inputs.map((input) => (
+              <FormInput
+                key={input.id}
+                {...input} 
+                value={formData[input.name]} 
+                onChange={handleChange}
+                error={fieldErrors[input.name]} 
+              />
+            ))}
+
+            {globalError && <p className="text-red-600 text-sm -my-4">* {globalError}</p>}
+            
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="paragraph-p3-medium bg-primary py-2.5 rounded-[8px] text-light-text transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] disabled:opacity-70"
+            >
+              {isSubmitting ? 'Signing up...' : 'Sign up'}
+            </button>
+          </form>
+
+          <p className="text-center paragraph-p4-regular text-dark-text mt-2.5">
+            Already have an account?
+            <span className="ml-1.5 text-primary hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)] transition">
+              <Link href="/auth/login">Log in</Link>
+            </span>
+          </p>
         </div>
-        <div className={'w-1/2'} role="img" aria-label="Image preview">
-          <Image 
-            src={registerImg} 
-            alt="Register Image"
-            priority
-            placeholder="blur" 
-            style={{ width: '100%', height: 'auto' }} 
-          />
-        </div>
-      </section>
-    </>
+      </div>
+      
+      <div className="w-1/2" role="img" aria-label="Image preview">
+        <Image 
+          src={registerImg} 
+          alt="Register Image"
+          priority
+          placeholder="blur" 
+          style={{ width: '100%', height: 'auto' }} 
+        />
+      </div>
+    </section>
   );
 }
