@@ -1,12 +1,10 @@
 import { Schema, model, Document } from 'mongoose'
 import type { IPlace, IRestaurant, IDestinationRoute, IRestaurantRoute } from './planner.type'
+import { IUserInput } from './planner.validation'
 
 export interface IItineraryDocument extends Document {
   userId: string
-  userLocation: {
-    lat: number
-    lng: number
-  }
+  userInput: IUserInput
   places: IPlace[]
   restaurants: IRestaurant[]
   userDestinationMatrix: Array<{
@@ -28,15 +26,16 @@ const itinerarySchema = new Schema<IItineraryDocument>(
     //   required: true,
     //   index: true
     // },
-    userLocation: {
-      lat: {
-        type: Number,
-        required: true
+    userInput: {
+      destination: {
+        lat: { type: Number, required: true },
+        lng: { type: Number, required: true }
       },
-      lng: {
-        type: Number,
-        required: true
-      }
+      startDate: { type: String, required: true },
+      numberOfDays: { type: Number, required: true },
+      people: { type: String, required: true },
+      budget: { type: String, required: true },
+      theme: { type: String, required: true }
     },
     places: [
       {

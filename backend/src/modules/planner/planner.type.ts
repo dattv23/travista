@@ -1,3 +1,5 @@
+import { IUserInput } from './planner.validation'
+
 export interface IKakaoMapsResponse {
   place_name: string
   road_address_name: string
@@ -56,8 +58,7 @@ export interface IRestaurantRoute {
 }
 
 export interface IItineraryState {
-  lat: number
-  lng: number
+  userInput: IUserInput
   places: IPlace[]
   restaurants: IRestaurant[]
   userDestinationMatrix: IDistanceInfo[]
