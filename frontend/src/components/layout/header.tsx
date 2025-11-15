@@ -3,36 +3,50 @@
 import { useState, Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from 'next/navigation';
-import { Transition } from "@headlessui/react"; 
+import { usePathname, useRouter } from 'next/navigation';
 
-import { LanguageOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined } from '@mui/icons-material';
+import { LanguageOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined, AccountCircleOutlined } from '@mui/icons-material';
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/contexts/AuthContext";
+import Dropdown from "../ui/dropdown";
+
+const navLinks = [
+  { title: "Home", path: "/" },
+  { title: "Plan", path: "/plan" },
+];
+
+const languages = [{ title: "English", code: "EN" }];
 
 export default function Header() {
 
-  const { userLoggedIn, isLoading } = useAuth();
-
-  const navLinks = [
-    { id: 1, title: "Home", path: "/" },
-    { id: 2, title: "Plan", path: "/plan" },
-  ];
-
-  const languages = [{ id: 1, title: "English", code: "EN" }, {id: 2, title: "Tiếng Việt", code: "VI"}];
+  const { userLoggedIn, isLoading, logout, user } = useAuth();
 
   const [language, setLanguage] = useState(languages[0].code);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   
+  const router = useRouter();
   const pathname = usePathname();
 
-  const toggleLanguageDropdown = () => {
-    setDropdownOpen(!dropdownOpen);
+  const getDisplayName = () => {
+    const fullName = user?.name || "User";
+    const parts = fullName.trim().split(" ");
+    return parts[parts.length - 1]; 
+  }
+
+  const handleToggleDropdown = (dropdownName: string) => {
+    setOpenDropdown(prev => (prev === dropdownName ? null : dropdownName));
   }
 
   const handleLanguageOption = (code: string) => {
     setLanguage(code);
-    setDropdownOpen(false); 
+    setOpenDropdown(null); 
+  }
+
+  const handleLogout = () => {
+    logout();
+    console.log("User logging out");
+    setOpenDropdown(null); 
+    router.push('/')
   }
 
   return (
@@ -45,10 +59,11 @@ export default function Header() {
           </Link>
         </div>
         <div className="flex paragraph-p2-medium gap-[50px]">
-          {navLinks.map(nav => {
+          {navLinks.map((nav, index) => {
             const isActive = pathname === nav.path;
+            const path = userLoggedIn ? nav.path : '/auth/login';
             return(
-              <Link key={nav.id} href={nav.path} className={`relative group ${isActive && 'text-primary'}`}>
+              <Link key={index} href={path} className={`relative group ${isActive && 'text-primary'}`}>
                 {nav.title}
                 <span className={`
                     absolute left-0 -bottom-1 h-[3px] rounded-2xl w-full 
@@ -59,52 +74,59 @@ export default function Header() {
           )})}
         </div>
         <div className="flex paragraph-p2-medium gap-4">
-          <div className="relative">
-            <button 
-              onClick={toggleLanguageDropdown} 
-              className={`
-                px-[15px] py-2.5 bg-transparent flex justify-center items-center gap-4 border-2 rounded-[8px] relative cursor-pointer transition text-[color-mix(in_srgb,var(--color-sub-text),black_10%)]
-              `}
-            >
-              <div className="flex gap-1.5">
-                <LanguageOutlined />
-                {language}
-              </div>
-              {dropdownOpen ? <KeyboardArrowUpOutlined /> : <KeyboardArrowDownOutlined />}
-            </button>
-            
-            <Transition
-              as={Fragment}
-              show={dropdownOpen}
-              enter="transition ease-out duration-100"
-              enterFrom="opacity-0 -translate-y-2"
-              enterTo="opacity-100 translate-y-0"
-              leave="transition ease-in duration-75"
-              leaveFrom="opacity-100 translate-y-0"
-              leaveTo="opacity-0 -translate-y-2"
-            >
-              <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-card shadow-lg focus:outline-none">
-                <div className="py-1">
-                  {languages.map(language => (
-                    <button 
-                      key={language.id} 
-                      onClick={() => handleLanguageOption(language.code)} 
-                      className="block w-full text-left px-4 py-2 text-dark-text hover:bg-hover transition cursor-pointer" 
-                    >
-                      {language.title}
-                    </button>
-                  ))}
+          <Dropdown
+            isOpen={openDropdown === 'language'}
+            widthClass="w-full" 
+            trigger={
+              <button 
+                onClick={() => handleToggleDropdown('language')} 
+                className={`
+                  px-[15px] py-2.5 bg-transparent flex justify-center items-center gap-4 border-2 rounded-[8px] relative cursor-pointer transition text-[color-mix(in_srgb,var(--color-sub-text),black_10%)]
+                `}
+              >
+                <div className="flex gap-1.5">
+                  <LanguageOutlined />
+                  {language}
                 </div>
-              </div>
-            </Transition>
-          </div>
+                {openDropdown === 'language' ? <KeyboardArrowUpOutlined /> : <KeyboardArrowDownOutlined />}
+              </button>
+            }
+          >
+            {languages.map((language, index) => (
+              <button 
+                key={index} 
+                onClick={() => handleLanguageOption(language.code)} 
+                className="block w-full text-left px-4 py-2 text-dark-text hover:bg-hover transition cursor-pointer" 
+              >
+                {language.title}
+              </button>
+            ))}
+          </Dropdown>
           
           {userLoggedIn ? (
-            <>
+            <Dropdown
+              isOpen={openDropdown === 'user'}
+              widthClass="w-full" 
+              trigger={
+                <button 
+                  onClick={() => handleToggleDropdown('user')}
+                  className="w-40 px-[15px] py-2.5 bg-transparent flex justify-between items-center gap-4 border-2 rounded-[8px] relative cursor-pointer transition text-[color-mix(in_srgb,var(--color-sub-text),black_10%)]"
+                >
+                  <div className="flex items-center gap-2">
+                    <AccountCircleOutlined />
+                    {getDisplayName()}
+                  </div>
+                  {openDropdown === 'user' ? <KeyboardArrowUpOutlined /> : <KeyboardArrowDownOutlined />}
+                </button>
+              }
+            >
               <button 
-                className="px-[25px] py-2.5 flex justify-center items-center border-2 rounded-[8px] transition-all bg-transparent text-[color-mix(in_srgb,var(--color-sub-text),black_10%)] hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]"
-              >Username</button>
-            </>
+                onClick={handleLogout}
+                className="block w-full text-left px-4 py-2 text-dark-text hover:bg-hover transition cursor-pointer" 
+              >
+                Log Out
+              </button>
+            </Dropdown>
           ) : (
             <>
               <Link href={'/auth/login'} className={`
