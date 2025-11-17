@@ -2,6 +2,9 @@ import axios from 'axios'
 import { IKakaoMapsResponse, IItineraryState } from './planner.type'
 import { TravelItinerary } from './planner.model'
 import { logger } from '@/config/logger'
+import { smartTripPrompt } from '@/utils/prompts'
+import { IUserInput } from './planner.validation'
+import { parseItinerary } from '@/utils/parseItinerary'
 
 export const plannerService = {
   async getTouristAttractions(state: IItineraryState): Promise<IItineraryState> {
@@ -11,8 +14,8 @@ export const plannerService = {
       const res = await axios.get('https://dapi.kakao.com/v2/local/search/category.json', {
         params: {
           category_group_code: 'AT4',
-          x: state.lng,
-          y: state.lat,
+          x: state.userInput.destination.lng, // longitude
+          y: state.userInput.destination.lat, // latitude
           radius: 15000,
           size: 10,
           sort: 'distance'
@@ -44,8 +47,8 @@ export const plannerService = {
       const res = await axios.get('https://dapi.kakao.com/v2/local/search/category.json', {
         params: {
           category_group_code: 'FD6', // 🍽️ FD6 = 음식점 (Restaurant)
-          x: state.lng, // longitude
-          y: state.lat, // latitude
+          x: state.userInput.destination.lng, // longitude
+          y: state.userInput.destination.lat, // latitude
           radius: 15000, // ~5km search range
           size: 10, // fetch more to filter later
           sort: 'distance' // nearest first
@@ -97,7 +100,7 @@ export const plannerService = {
   async calculateDistanceToDestinationMatrix(state: IItineraryState): Promise<IItineraryState> {
     logger.info('Calculating distance to destinations (Naver)...')
 
-    const start = `${state.lng},${state.lat}`
+    const start = `${state.userInput.destination.lng},${state.userInput.destination.lat}`
     state.userDestinationMatrix = []
 
     for (const place of state.places) {
@@ -156,58 +159,110 @@ export const plannerService = {
   },
 
   async generateItinerary(state: IItineraryState): Promise<IItineraryState> {
-    logger.info('Generating itinerary with Naver HyperCLOVA X...')
+    logger.info('Generating itinerary with Naver HyperCLOVA HCX-007...')
 
-    const prompt = `
-You are a Korean travel assistant. Create a one-day optimized travel itinerary based on the following data.
-
-User → Destination distance/time:
-${JSON.stringify(state.userDestinationMatrix, null, 2)}
-
-Between destinations:
-${JSON.stringify(state.destinationMatrix, null, 2)}
-
-Restaurant → Destination relationships:
-${JSON.stringify(state.restaurantDestinationMatrix, null, 2)}
-
-Rules:
-1. Start with the closest tourist attraction from the user.
-2. Visit 2 attractions, then choose the most convenient restaurant.
-3. Continue to the remaining attractions while minimizing travel time.
-4. Include estimated times and transitions clearly.
-5. Keep the itinerary short, readable and friendly.
+    const userInput = `
+      - Destination: (${state.userInput.destination.lat}, ${state.userInput.destination.lng}) 
+      - Start date: ${state.userInput.startDate}
+      - Number of days: ${state.userInput.numberOfDays}
+      - People: ${state.userInput.people}
+      - Budget: ${state.userInput.budget}
+      - Theme: ${state.userInput.theme}
     `
 
-    const response = await axios.post(
-      `https://clovastudio.stream.ntruss.com/v3/chat-completions/HCX-005`,
-      {
-        messages: [
-          { role: 'system', content: 'You are a helpful Korean travel planning assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        maxTokens: 1800,
-        temperature: 0.65,
-        topP: 0.9
-      },
-      {
-        headers: {
-          // 'X-NCP-CLOVASTUDIO-API-KEY': process.env.NAVER_CLOVA_API_KEY!,
-          // 'X-NCP-CLOVASTUDIO-API-SECRET': process.env.NAVER_CLOVA_API_SECRET!,
-          // 'X-NCP-CLOVASTUDIO-PROJECT-ID': process.env.NAVER_CLOVA_PROJECT_ID!,
-          Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
+    const allPlacesData = `
+      User → Destination distance/time:
+      ${JSON.stringify(state.userDestinationMatrix, null, 2)}
 
-    state.itinerary = response.data.result?.message?.content || ''
-    return state
+      Between destinations:
+      ${JSON.stringify(state.destinationMatrix, null, 2)}
+
+      Restaurant → Destination relationships:
+      ${JSON.stringify(state.restaurantDestinationMatrix, null, 2)}
+    `
+    const prompt = smartTripPrompt.replace('{{USER_INPUT}}', userInput).replace('{{TOTAL_DAYS}}', state.userInput.numberOfDays.toString()).replace('{{ALL_PLACES_DATA}}', allPlacesData)
+
+    try {
+      const response = await axios.post(
+        `https://clovastudio.stream.ntruss.com/v3/chat-completions/HCX-007`,
+        {
+          messages: [
+            { role: 'system', content: 'You are an AI assistant that must respond ONLY in valid JSON following the schema.' },
+            { role: 'user', content: prompt }
+          ],
+          topP: 0.8,
+          topK: 0,
+          maxCompletionTokens: 10000,
+          temperature: 0.5,
+          repetitionPenalty: 1.1,
+          thinking: { effort: 'none' },
+          stop: [],
+          responseFormat: {
+            type: 'json',
+            schema: {
+              type: 'object',
+              properties: {
+                days: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      day_index: { type: 'number' },
+                      date: { type: 'string' },
+                      timeline: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            index: { type: 'number' },
+                            name: { type: 'string' },
+                            type: { type: 'string', enum: ['attraction', 'restaurant'] },
+                            start_time: { type: 'string' },
+                            end_time: { type: 'string' },
+                            duration_minutes: { type: 'number' },
+                            lat: { type: ['number', 'null'] },
+                            lng: { type: ['number', 'null'] },
+                            note: { type: 'string' }
+                          },
+                          required: ['index', 'name', 'type', 'start_time', 'end_time', 'duration_minutes', 'lat', 'lng', 'note']
+                        }
+                      }
+                    },
+                    required: ['day_index', 'date', 'timeline']
+                  }
+                }
+              },
+              required: ['days']
+            }
+          }
+        },
+        {
+          headers: {
+            // 'X-NCP-CLOVASTUDIO-API-KEY': process.env.NAVER_CLOVA_API_KEY!,
+            // 'X-NCP-CLOVASTUDIO-API-SECRET': process.env.NAVER_CLOVA_API_SECRET!,
+            // 'X-NCP-CLOVASTUDIO-PROJECT-ID': process.env.NAVER_CLOVA_PROJECT_ID!,
+            Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      state.itinerary = response.data.result?.message?.content || ''
+
+      logger.info('Itinerary generation completed.')
+      const itineraryPreview = parseItinerary(state.itinerary)
+      if (itineraryPreview) logger.debug(`Itinerary preview: ${itineraryPreview.toString()}`)
+      else logger.warn('Failed to parse itinerary preview for logging.')
+      return state
+    } catch (error) {
+      logger.error('Error generating itinerary:', error)
+      throw error
+    }
   },
 
-  async executePlannerWorkflow(lat: number, lng: number): Promise<IItineraryState> {
+  async executePlannerWorkflow(userInput: IUserInput): Promise<IItineraryState> {
     let state: IItineraryState = {
-      lat,
-      lng,
+      userInput: userInput,
       places: [],
       restaurants: [],
       userDestinationMatrix: [],
@@ -235,7 +290,7 @@ Rules:
     state = await this.generateItinerary(state)
 
     const savedItinerary = await TravelItinerary.create({
-      userLocation: { lat: state.lat, lng: state.lng },
+      userInput: state.userInput,
       places: state.places,
       restaurants: state.restaurants,
       userDestinationMatrix: state.userDestinationMatrix,
