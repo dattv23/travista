@@ -3,11 +3,17 @@ import { logger } from '@/config/logger'
 
 export const mapperService = {
   /**
-   * Get driving directions to draw route on map
-   * Works with single destination or multiple waypoints
+   * Get driving directions with waypoints - EXACT copy from test-waypoints-direct.js
+   * start: "lng,lat"
+   * goal: "lng,lat" 
+   * waypoints: "lng,lat|lng,lat|lng,lat" (up to 5, separated by |)
+   * option: 'trafast' | 'traoptimal' | 'tracomfort' | 'traavoidtoll' | 'traavoidcaronly'
    */
   async getDirections(start: string, goal: string, waypoints?: string, option: string = 'trafast') {
-    logger.info(`Getting directions: ${start} -> ${goal}${waypoints ? ` via ${waypoints}` : ''}`)
+    logger.info(`Getting directions: ${start} -> ${goal}`)
+    if (waypoints) {
+      logger.info(`Via waypoints: ${waypoints}`)
+    }
 
     const params: any = { 
       start,
@@ -15,7 +21,6 @@ export const mapperService = {
       option
     }
 
-    // Add waypoints if provided (up to 5 waypoints allowed)
     if (waypoints) {
       params.waypoints = waypoints
     }
@@ -29,39 +34,39 @@ export const mapperService = {
         }
       })
 
-      logger.info(`✅ Route found - Code: ${response.data.code}`)
+      logger.info(`✅ Route found - Code: ${response.data.code}, Message: ${response.data.message}`)
       return response.data
     } catch (error: any) {
-      logger.error('❌ Directions API Error Details:')
+      logger.error('❌ Directions API Error:')
       logger.error('Status:', error.response?.status)
       logger.error('Data:', JSON.stringify(error.response?.data, null, 2))
-      logger.error('Request params:', JSON.stringify(params, null, 2))
       throw error
     }
   },
 
   /**
-   * Parse locations array and create route
-   * Takes array of coordinates and creates a route through all of them
+   * Create route through multiple locations
+   * Takes array of "lng,lat" strings and creates route with waypoints
+   * Max 7 locations: start + 5 waypoints + goal
    */
   async createRouteFromLocations(locations: string[]) {
     if (locations.length < 2) {
-      throw new Error('Need at least 2 locations to create a route')
+      throw new Error('Need at least 2 locations')
+    }
+
+    if (locations.length > 7) {
+      throw new Error('Maximum 7 locations (start + 5 waypoints + goal)')
     }
 
     const start = locations[0]
     const goal = locations[locations.length - 1]
     
-    logger.info(`Creating route: ${locations.length} locations`)
-    logger.info(`Start: ${start}`)
-    logger.info(`Goal: ${goal}`)
+    logger.info(`Creating route through ${locations.length} locations`)
     
-    // Middle locations become waypoints (max 5)
     let waypoints: string | undefined
     if (locations.length > 2) {
-      const middlePoints = locations.slice(1, -1).slice(0, 5) // Max 5 waypoints
+      const middlePoints = locations.slice(1, -1)
       waypoints = middlePoints.join('|')
-      logger.info(`Waypoints: ${waypoints}`)
     }
 
     return this.getDirections(start, goal, waypoints)

@@ -45,8 +45,8 @@ export const mapperController = {
 
   /**
    * POST /draw-route
-   * Body: { locations: ["lng,lat", "lng,lat", "lng,lat", ...] }
-   * Creates a route through multiple locations (up to 7 total: start + 5 waypoints + goal)
+   * Body: { locations: ["lng,lat", "lng,lat", ...] }
+   * Max 7 locations (start + 5 waypoints + goal)
    */
   async drawRoute(req: Request, res: Response) {
     try {
@@ -76,7 +76,7 @@ export const mapperController = {
         })
       }
 
-      // Extract path for drawing
+      // Extract route data for drawing
       const routeKey = Object.keys(result.route)[0]
       const route = result.route[routeKey][0]
 
@@ -87,9 +87,11 @@ export const mapperController = {
             distance: `${(route.summary.distance / 1000).toFixed(2)} km`,
             duration: `${Math.round(route.summary.duration / 60000)} minutes`,
             tollFare: route.summary.tollFare,
-            taxiFare: route.summary.taxiFare
+            taxiFare: route.summary.taxiFare,
+            fuelPrice: route.summary.fuelPrice
           },
-          path: route.path, // Array of [lng, lat] for drawing
+          path: route.path,  // Array of [lng, lat] for drawing
+          guide: route.guide, // Turn-by-turn directions
           fullData: result
         }
       })
