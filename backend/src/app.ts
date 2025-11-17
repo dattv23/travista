@@ -7,6 +7,7 @@ import { connectDatabase } from '@/database/connection'
 import { errorHandler } from '@/middlewares/errorHandler'
 import { userRouter } from '@/modules/user/user.route'
 import { plannerRouter } from '@/modules/planner/planner.route'
+import { mapperRouter } from '@/modules/mapper/mapper.route'
 
 const app = express()
 
@@ -23,6 +24,7 @@ connectDatabase()
 // Routes
 app.use('/api/users', userRouter)
 app.use('/api/planner', plannerRouter)
+app.use('/api/mapper', mapperRouter)
 
 // Global error handler
 app.use(errorHandler)
