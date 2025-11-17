@@ -3,7 +3,7 @@ import { DirectionsBusFilledOutlined, DirectionsSubwayFilledOutlined, Storefront
 
 interface PlanCardProps {
   type: string;
-  title: string;
+  name: string;
   duration: string;
   estTime: string;
   summary: string;
@@ -12,7 +12,7 @@ interface PlanCardProps {
 
 export default function PlanCard({
   type,
-  title,
+  name,
   duration,
   estTime,
   summary,
@@ -30,24 +30,24 @@ export default function PlanCard({
 
 
   return (
-    <div className='flex gap-2 justify-start items-start'>
+    <div className='flex gap-3.5 justify-start items-start'>
       <div className='text-primary'>
         {displayingIcon ? displayingIcon.icon : "No icon"}
       </div>
-      <div>
-        <div>
-          <p className='w-full flex justify-betweenparagraph-p1-bold text-dark-text'>{title} <span className='paragraph-p3-medium text-secondary'>{duration}</span></p>
+      <div className='w-full flex flex-col gap-1.5'>
+        <div className='flex flex-col gap-1.5'>
+          <p className='flex justify-between paragraph-p2-bold text-dark-text'>{name} <span className='paragraph-p3-medium text-secondary'>{duration}</span></p>
           <p className='w-full flex justify-between paragraph-p4-medium text-sub-text'>Est. {estTime} {type in transportation && <span >{numberOfStops}</span>}</p>
         </div>
         {type === "location" && (
           <div>
-            <p className='paragraph-p3-regular text-dark-text'>{summary}</p>
+            <p className='paragraph-p3-regular text-dark-text'>Summary: {summary}</p>
           </div>
         )}
-        {/* Expanded content (Details) */}
-        <div>
+      </div>
+      {/* Expanded content (Details) */}
+      <div>
 
-        </div>
       </div>
     </div>
   );

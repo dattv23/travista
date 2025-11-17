@@ -21,8 +21,6 @@ interface PageProps {
 
 // SERVER COMPONENT (async)
 export default async function GeneratedPlanPage({ searchParams }: PageProps) {
-  
-  // const initialItinerary = await getAiItinerary(searchParams.theme);
 
   const initialItinerary = MY_ITINERARY;
 

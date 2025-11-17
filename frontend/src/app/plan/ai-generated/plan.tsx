@@ -5,6 +5,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { AddCard } from '@/components/ui/addCard';
+import PlanCard from '@/components/ui/planCard';
 
 interface MapPoint {
   lat: number,
@@ -22,6 +23,89 @@ interface PlanClientUIProps {
   };
   initialItinerary: MapPoint[]; 
 }
+
+const mockPlanData = [
+  {
+    type: "location",
+    name: "Hongik University (Hongdae)",
+    duration: "09:00 - 13:00",
+    estTime: "4 hours",
+    summary: "The heart of indie music, street art, and fashion. Perfect for finding unique clothes and watching busking.",
+    numberOfStops: null,
+  },
+  {
+    type: "bus",
+    name: "Bus 273",
+    duration: "13:00 - 13:20",
+    estTime: "20 mins",
+    summary: "",
+    numberOfStops: 4,
+  },
+  {
+    type: "location",
+    name: "Yeonnam-dong Park", 
+    duration: "13:20 - 15:20",
+    estTime: "1 hour",
+    summary: "A trendy neighborhood known for its cafe culture and the Gyeongui Line Forest Park.",
+    numberOfStops: null,
+  },
+  {
+    type: "subway",
+    name: "Subway Line 2",
+    duration: "15:20 - 15:50",
+    estTime: "30 mins",
+    summary: "",
+    numberOfStops: 4,
+  },
+  {
+    type: "location",
+    name: "The Hyundai Seoul",
+    duration: "16:00 - 19:00",
+    estTime: "3 hours",
+    summary: "Seoul's largest department store, featuring an indoor garden and contemporary architecture.",
+    numberOfStops: null,
+  },
+  {
+    type: "location",
+    name: "Hongik University (Hongdae)",
+    duration: "09:00 - 13:00",
+    estTime: "4 hours",
+    summary: "The heart of indie music, street art, and fashion. Perfect for finding unique clothes and watching busking.",
+    numberOfStops: null,
+  },
+  {
+    type: "bus",
+    name: "Bus 273",
+    duration: "13:00 - 13:20",
+    estTime: "20 mins",
+    summary: "",
+    numberOfStops: 4,
+  },
+  {
+    type: "location",
+    name: "Yeonnam-dong Park", 
+    duration: "13:20 - 15:20",
+    estTime: "1 hour",
+    summary: "A trendy neighborhood known for its cafe culture and the Gyeongui Line Forest Park.",
+    numberOfStops: null,
+  },
+  {
+    type: "subway",
+    name: "Subway Line 2",
+    duration: "15:20 - 15:50",
+    estTime: "30 mins",
+    summary: "",
+    numberOfStops: 4,
+  },
+  {
+    type: "location",
+    name: "The Hyundai Seoul",
+    duration: "16:00 - 19:00",
+    estTime: "3 hours",
+    summary: "Seoul's largest department store, featuring an indoor garden and contemporary architecture.",
+    numberOfStops: null,
+  },
+];
 
 const DynamicNaverMap = dynamic(
   () => import('@/components/map/NaverMap'),
@@ -53,7 +137,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     <>
       <section className="w-full min-h-screen pt-[92px] flex ">
         {/* left section */}
-        <div className='w-1/4 bgb-transparent shadow-xl px-[18px] h-screen'>
+        <div className='w-1/4 bgb-transparent shadow-xl px-[18px] h-screen flex flex-col'>
           <div className='pt-4'>
             {/* Title */}
             <div>
@@ -99,8 +183,19 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           </div>
           <hr className='text-divider m-2.5'/>
           {/* Main Content Area */}
-          <div className='scroll-auto'>
-            
+          <div className='flex-1 overflow-y-auto flex flex-col gap-4 pb-10'>
+            {mockPlanData.map((plan, index) => (
+              <div key={index} className='w-full p-2 bg-white rounded-[8px] shadow-sm'>
+                <PlanCard
+                  type={plan.type}
+                  name={plan.name}
+                  duration={plan.duration}
+                  estTime={plan.estTime}
+                  summary={plan.summary}
+                  numberOfStops={plan.numberOfStops}
+                />
+              </div>
+            ))}
           </div>
         </div>
 
