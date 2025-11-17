@@ -7,6 +7,6 @@ export const validate = (schema: ZodSchema) => (req: Request, res: Response, nex
     next()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    res.status(400).json({ message: error.errors })
+    res.status(400).json({ message: error.message })
   }
 }
