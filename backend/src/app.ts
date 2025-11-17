@@ -11,6 +11,8 @@ import { userRouter } from '@/modules/user/user.route'
 import { authRouter } from './modules/auth/auth.route'
 
 import '@/config/passport.setup'
+import { plannerRouter } from '@/modules/planner/planner.route'
+import { reviewRouter } from '@/modules/review/review.route'
 
 const app = express()
 
@@ -41,6 +43,8 @@ connectDatabase()
 // Routes
 app.use('/api/auth', authRouter)
 app.use('/api/users', userRouter)
+app.use('/api/planner', plannerRouter)
+app.use('/api/reviews', reviewRouter)
 
 // Global error handler
 app.use(errorHandler)
