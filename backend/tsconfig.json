@@ -4,12 +4,19 @@
     "module": "commonjs",
     "rootDir": "src",
     "outDir": "dist",
+    "moduleResolution": "node",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
+    "types": [],
     "skipLibCheck": true,
     "baseUrl": "src",
     "paths": {
       "@/*": ["*"]
-    }
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types" 
+    ]
   }
 }

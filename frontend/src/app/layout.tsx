@@ -1,14 +1,16 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import Script from 'next/script'
+
+import { Inter } from 'next/font/google'
+
 import '@/styles/globals.css'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
+import { AuthProvider } from '@/contexts/AuthContext'
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
 })
 
@@ -24,7 +26,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>{children}</body>
+      <head>
+        <Script 
+          strategy='afterInteractive'
+          src={`https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAP_CLIENT_ID}&submodules=panorama,geometry`}
+        />
+      </head>
+      <body className={`${inter.variable} antialiased`}>
+        <AuthProvider >
+          <Header />
+          <main className=''>
+              {children}
+          </main>
+          <Footer />
+        </AuthProvider>
+      </body>
     </html>
   )
 }
