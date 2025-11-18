@@ -4,11 +4,11 @@ import { mapperController } from './mapper.controller'
 export const mapperRouter = Router()
 
 /**
- * GET /mapper/get-directions
+ * POST /mapper/get-directions
  * Simple route between 2 points or with waypoints
- * Query: ?start=lng,lat&goal=lng,lat&waypoints=lng,lat|lng,lat&option=trafast
+ * Body: { start: "lng,lat", goal: "lng,lat", waypoints: "lng,lat|lng,lat", option: "trafast" }
  */
-mapperRouter.get('/get-directions', mapperController.getDirections)
+mapperRouter.post('/get-directions', mapperController.getDirections)
 
 /**
  * POST /mapper/draw-route

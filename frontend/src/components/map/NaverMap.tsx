@@ -11,6 +11,7 @@ interface MapPoint {
 
 interface NaverMapProps {
   path?: MapPoint[];
+  routePath?: [number, number][]; // Route polyline from mapper API
   mapZoom?: number;
   center?: MapPoint;
   onPinClick?: (point: MapPoint) => void;
@@ -18,6 +19,7 @@ interface NaverMapProps {
 
 const NaverMap: React.FC<NaverMapProps> = ({
   path = [],
+  routePath,
   center,
   mapZoom = 15, // Default
   onPinClick,
@@ -79,55 +81,98 @@ const NaverMap: React.FC<NaverMapProps> = ({
     mapInstanceRef.current.setZoom(mapZoom);
   }, [center, mapZoom]);
 
-  // --- Draw markers and paths ---
+  // --- Draw markers and route ---
   useEffect(() => {
     const map = mapInstanceRef.current;
     
     if (!map || !window.naver) return;
 
-    // Clean old markers
+    // Clean old markers and polyline
     markersRef.current.forEach((marker) => marker.setMap(null));
     markersRef.current = [];
     if (polylineRef.current) polylineRef.current.setMap(null);
 
     // Draw markers
-    path.forEach((point) => {
+    path.forEach((point, index) => {
       const position = new window.naver.maps.LatLng(point.lat, point.lng);
       
-      const largerIcon = {
-        url: '/icons/pin.png',
-        scaledSize: new window.naver.maps.Size(36, 56),
-        origin: new window.naver.maps.Point(0, 0),
-        anchor: new window.naver.maps.Point(18, 56)
-      };
+      const isStart = index === 0;
+      const isEnd = index === path.length - 1;
+      
+      // Custom marker with number badge
+      const markerContent = `
+        <div style="
+          background: ${isStart ? '#4CAF50' : isEnd ? '#F44336' : '#2196F3'};
+          color: white;
+          padding: 8px 12px;
+          border-radius: 20px;
+          font-weight: bold;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          text-align: center;
+          min-width: 30px;
+        ">
+          ${index + 1}
+        </div>
+      `;
 
       const marker = new window.naver.maps.Marker({
         position: position,
         map: map,
-        icon: largerIcon 
+        icon: {
+          content: markerContent,
+          anchor: new window.naver.maps.Point(15, 15)
+        }
       });
 
+      // Click handler for Street View
       window.naver.maps.Event.addListener(marker, "click", () => {
         if (onPinClick) onPinClick(point);
         showPanorama(position);
       });
 
+      // Hover info window
+      const infoWindow = new window.naver.maps.InfoWindow({
+        content: `
+          <div style="padding: 10px; min-width: 150px;">
+            <h3 style="margin: 0 0 5px 0; font-weight: bold;">${point.name || `Location ${index + 1}`}</h3>
+            <p style="margin: 0; font-size: 12px; color: #666;">Click to view Street View</p>
+          </div>
+        `
+      });
+
+      window.naver.maps.Event.addListener(marker, "mouseover", () => {
+        infoWindow.open(map, marker);
+      });
+
+      window.naver.maps.Event.addListener(marker, "mouseout", () => {
+        infoWindow.close();
+      });
+
       markersRef.current.push(marker);
     });
 
-    // Draw polyline
-    if (path.length > 1) {
-      const naverPath = path.map((point) => new window.naver.maps.LatLng(point.lat, point.lng));
+    // Draw route polyline from API
+    if (routePath && routePath.length > 1) {
+      const naverPath = routePath.map(coord => 
+        new window.naver.maps.LatLng(coord[1], coord[0]) // [lng, lat] -> LatLng(lat, lng)
+      );
+      
       const polyline = new window.naver.maps.Polyline({
         path: naverPath,
         map: map,
-        strokeColor: "rgb(45,111,247)",
-        strokeWeight: 6,
-        strokeOpacity: 0.9,
+        strokeColor: "#5347AA",
+        strokeWeight: 5,
+        strokeOpacity: 0.8,
       });
+      
       polylineRef.current = polyline;
+
+      // Fit bounds to show entire route
+      const bounds = new window.naver.maps.LatLngBounds();
+      naverPath.forEach(point => bounds.extend(point));
+      map.fitBounds(bounds, { padding: 50 });
     }
-  }, [path, isNaverReady]); 
+  }, [path, routePath, isNaverReady]); 
 
   const showPanorama = (position: any) => {
     if (!panoramaRef.current || !window.naver) {

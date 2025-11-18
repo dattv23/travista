@@ -3,20 +3,17 @@ import { mapperService } from './mapper.service'
 
 export const mapperController = {
   /**
-   * GET /get-directions?start=lng,lat&goal=lng,lat&waypoints=lng,lat|lng,lat&option=trafast
-   * Simple 2-point route or route with waypoints
+   * POST /get-directions
+   * Body: { start: "lng,lat", goal: "lng,lat", waypoints: "lng,lat|lng,lat", option: "trafast" }
    */
   async getDirections(req: Request, res: Response) {
     try {
-      const start = req.query.start as string
-      const goal = req.query.goal as string
-      const waypoints = req.query.waypoints as string | undefined
-      const option = (req.query.option as string) || 'trafast'
+      const { start, goal, waypoints, option = 'trafast' } = req.body
 
       if (!start || !goal) {
         return res.status(400).json({
           success: false,
-          message: 'start and goal parameters are required'
+          message: 'start and goal are required in request body'
         })
       }
 

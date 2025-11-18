@@ -3,9 +3,10 @@
 import { ArrowCircleLeft } from '@mui/icons-material';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddCard } from '@/components/ui/addCard';
 import PlanCard from '@/components/ui/planCard';
+import { useRouteDrawing } from '@/hooks/useRouteDrawing';
 
 interface MapPoint {
   lat: number,
@@ -119,6 +120,17 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itinerary, setItinerary] = useState(initialItinerary);
+  
+  // Route drawing hook
+  const { route, loading, error, drawRoute } = useRouteDrawing();
+
+  // TEMPORARILY DISABLED - Testing with simple endpoint first
+  // Automatically fetch route when itinerary changes
+  // useEffect(() => {
+  //   if (itinerary.length >= 2) {
+  //     drawRoute(itinerary);
+  //   }
+  // }, [itinerary, drawRoute]);
 
   const handleOpenAddModal = () => {
     setIsModalOpen(true);
@@ -164,6 +176,31 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                 <p className="paragraph-p3-medium text-sub-text">Budget: {searchParams.budget}</p>
               </div>
             </div>
+            {/* Route Summary */}
+            {route && (
+              <div className='bg-blue-50 p-4 rounded-lg mb-4'>
+                <h3 className='paragraph-p3-semibold mb-2'>Route Summary</h3>
+                <div className='paragraph-p4-regular space-y-1'>
+                  <p>📏 Distance: {route.summary.distance}</p>
+                  <p>⏱️ Duration: {route.summary.duration}</p>
+                  <p>💰 Toll: {route.summary.tollFare.toLocaleString()} KRW</p>
+                  <p>🚕 Taxi: {route.summary.taxiFare.toLocaleString()} KRW</p>
+                </div>
+              </div>
+            )}
+
+            {loading && (
+              <div className='bg-yellow-50 p-3 rounded-lg mb-4'>
+                <p className='paragraph-p4-regular'>⏳ Loading route...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className='bg-red-50 p-3 rounded-lg mb-4'>
+                <p className='paragraph-p4-regular text-red-600'>{error}</p>
+              </div>
+            )}
+
             <div className='flex justify-between mt-5'>
               <button></button>
               <div className='paragraph-p3-medium flex gap-5'>
@@ -203,6 +240,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         <div className='w-3/4 bg-gray-400 h-screen'>
           <DynamicNaverMap
             path={itinerary}
+            routePath={route?.path}
           />
         </div>
       </section>
