@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface User {
   id: string;
@@ -20,26 +20,37 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   register: (data: RegisterData) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>;
   googleLogin: () => void;
-  logout: () => Promise<void>
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children } : { children: ReactNode}) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function checkUserSession() {
       try {
+        const accessToken = localStorage.getItem('access_token');
+
+        if (!accessToken) {
+          setUser(null);
+          setIsLoading(false);
+          return;
+        }
+
         const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/me`, {
           credentials: 'include',
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+          },
         });
 
         if (response.ok) {
-          const { user } = await response.json()
+          const { user } = await response.json();
           setUser(user);
         } else {
           setUser(null);
@@ -53,19 +64,19 @@ export function AuthProvider({ children } : { children: ReactNode}) {
     }
 
     checkUserSession();
-  }, [])
+  }, []);
 
   const register = async (data: RegisterData) => {
     const backendData = {
       name: `${data.lastname} ${data.firstname}`,
       email: data.email,
-      password: data.password
+      password: data.password,
     };
     const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify(backendData), 
+      body: JSON.stringify(backendData),
     });
 
     if (!response.ok) {
@@ -80,16 +91,19 @@ export function AuthProvider({ children } : { children: ReactNode}) {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({ email, password }),
-    })
+    });
 
     if (response.ok) {
-      const { user } = await response.json();
+      const { user, token } = await response.json();
+
+      localStorage.setItem('access_token', token);
+
       setUser(user);
     } else {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Email or password is wrong');
     }
-  }
+  };
 
   const googleLogin = () => {
     window.location.href = `${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/google`;
@@ -106,7 +120,7 @@ export function AuthProvider({ children } : { children: ReactNode}) {
     } finally {
       setUser(null);
     }
-  }
+  };
 
   return (
     <AuthContext.Provider value={{ user, isLoading, register, login, googleLogin, logout }}>
@@ -125,5 +139,5 @@ export function useAuth() {
   return {
     ...context,
     userLoggedIn: context.user !== null,
-  }
+  };
 }

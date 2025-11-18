@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { authService } from './auth.service'
-import { IUser } from '../user/user.model'
-import { Types } from 'mongoose'
+import { UserModel } from '../user/user.model'
+import jwt from 'jsonwebtoken'
 
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction) {
@@ -41,10 +41,21 @@ export const authController = {
 
   async getMe(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.user) {
+      const authorizationHeader = req.headers.authorization
+      if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
         return res.status(401).json({ message: 'Not authenticated' })
       }
-      const user = req.user as IUser & { _id: Types.ObjectId }
+
+      const token = authorizationHeader.split(' ')[1]
+
+      const payload = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; email: string }
+
+      const user = await UserModel.findById(payload.id)
+
+      if (!user) {
+        return res.status(401).json({ message: 'Not authenticated' })
+      }
+
       user.password = undefined
       res.status(200).json({ user })
     } catch (error) {
