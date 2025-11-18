@@ -37,6 +37,7 @@ export const useRouteDrawing = (): UseRouteDrawingReturn => {
       return;
     }
 
+    console.log('🎯 Drawing route for', locations.length, 'locations');
     setLoading(true);
     setError(null);
 
@@ -44,13 +45,15 @@ export const useRouteDrawing = (): UseRouteDrawingReturn => {
       const response = await mapperService.getDirections(locations);
       
       if (response.success) {
+        console.log('✅ Route loaded successfully:', response.data.summary);
         setRoute(response.data);
       } else {
         throw new Error('Route request failed');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to draw route');
-      console.error('Route drawing error:', err);
+      const errorMsg = err.message || 'Failed to draw route';
+      setError(errorMsg);
+      console.error('❌ Route drawing error:', errorMsg, err);
     } finally {
       setLoading(false);
     }

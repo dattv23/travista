@@ -130,12 +130,14 @@ const NaverMap: React.FC<NaverMapProps> = ({
         showPanorama(position);
       });
 
-      // Hover info window
+      // Hover info window with location info
+      const locationName = point.name || `Stop ${index + 1}`;
       const infoWindow = new window.naver.maps.InfoWindow({
         content: `
           <div style="padding: 10px; min-width: 150px;">
-            <h3 style="margin: 0 0 5px 0; font-weight: bold;">${point.name || `Location ${index + 1}`}</h3>
-            <p style="margin: 0; font-size: 12px; color: #666;">Click to view Street View</p>
+            <h3 style="margin: 0 0 5px 0; font-weight: bold; font-size: 14px;">${locationName}</h3>
+            <p style="margin: 0; font-size: 12px; color: #666;">📍 ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}</p>
+            <p style="margin: 5px 0 0 0; font-size: 11px; color: #999;">Click for Street View</p>
           </div>
         `
       });

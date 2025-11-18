@@ -124,7 +124,7 @@ export default function TestMapperPage() {
         </div>
       )}
 
-      {result && (
+      {result && result.summary && (
         <div style={{ 
           padding: '20px', 
           backgroundColor: '#e8f5e9', 
@@ -153,7 +153,7 @@ export default function TestMapperPage() {
             }}>
               <div style={{ fontSize: '12px', color: '#666' }}>Distance</div>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                {result.summary.distance}
+                {result.summary?.distance || 'N/A'}
               </div>
             </div>
             
@@ -164,7 +164,7 @@ export default function TestMapperPage() {
             }}>
               <div style={{ fontSize: '12px', color: '#666' }}>Duration</div>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                {result.summary.duration}
+                {result.summary?.duration || 'N/A'}
               </div>
             </div>
             
@@ -175,7 +175,7 @@ export default function TestMapperPage() {
             }}>
               <div style={{ fontSize: '12px', color: '#666' }}>Toll Fare</div>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                {result.summary.tollFare.toLocaleString()} KRW
+                {result.summary?.tollFare?.toLocaleString() || 0} KRW
               </div>
             </div>
             
@@ -186,7 +186,7 @@ export default function TestMapperPage() {
             }}>
               <div style={{ fontSize: '12px', color: '#666' }}>Taxi Fare</div>
               <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                {result.summary.taxiFare.toLocaleString()} KRW
+                {result.summary?.taxiFare?.toLocaleString() || 0} KRW
               </div>
             </div>
           </div>
@@ -198,7 +198,7 @@ export default function TestMapperPage() {
           }}>
             <div style={{ fontSize: '12px', color: '#666' }}>Path Points</div>
             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-              {result.path.length} coordinates
+              {result.path?.length || 0} coordinates
             </div>
           </div>
         </div>

@@ -51,15 +51,27 @@ export const mapperService = {
       // Convert to "lng,lat" format required by backend
       const formattedLocations = locations.map(loc => `${loc.lng},${loc.lat}`);
 
-      const response = await axiosClient.post<RouteResponse>(
-        '/mapper/draw-route',
-        { locations: formattedLocations }
-      );
+      console.log('🚀 Sending route request:', formattedLocations);
 
-      return response;
+      const response = await fetch('http://localhost:8080/api/mapper/draw-route', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ locations: formattedLocations })
+      });
+
+      const data = await response.json();
+      console.log('📦 Route response:', data);
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to get directions');
+      }
+
+      return data;
     } catch (error: any) {
-      console.error('Mapper service error:', error);
-      throw new Error(error.response?.data?.message || 'Failed to get directions');
+      console.error('❌ Mapper service error:', error);
+      throw new Error(error.message || 'Failed to get directions');
     }
   },
 

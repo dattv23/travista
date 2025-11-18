@@ -124,13 +124,12 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
   // Route drawing hook
   const { route, loading, error, drawRoute } = useRouteDrawing();
 
-  // TEMPORARILY DISABLED - Testing with simple endpoint first
   // Automatically fetch route when itinerary changes
-  // useEffect(() => {
-  //   if (itinerary.length >= 2) {
-  //     drawRoute(itinerary);
-  //   }
-  // }, [itinerary, drawRoute]);
+  useEffect(() => {
+    if (itinerary.length >= 2) {
+      drawRoute(itinerary);
+    }
+  }, [itinerary, drawRoute]);
 
   const handleOpenAddModal = () => {
     setIsModalOpen(true);
@@ -177,14 +176,14 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               </div>
             </div>
             {/* Route Summary */}
-            {route && (
+            {route && route.summary && (
               <div className='bg-blue-50 p-4 rounded-lg mb-4'>
-                <h3 className='paragraph-p3-semibold mb-2'>Route Summary</h3>
+                <h3 className='paragraph-p3-semibold mb-2'>✅ Route Summary</h3>
                 <div className='paragraph-p4-regular space-y-1'>
-                  <p>📏 Distance: {route.summary.distance}</p>
-                  <p>⏱️ Duration: {route.summary.duration}</p>
-                  <p>💰 Toll: {route.summary.tollFare.toLocaleString()} KRW</p>
-                  <p>🚕 Taxi: {route.summary.taxiFare.toLocaleString()} KRW</p>
+                  <p>📏 Distance: {route.summary?.distance || 'N/A'}</p>
+                  <p>⏱️ Duration: {route.summary?.duration || 'N/A'}</p>
+                  <p>💰 Toll: {route.summary?.tollFare?.toLocaleString() || 0} KRW</p>
+                  <p>🚕 Taxi: {route.summary?.taxiFare?.toLocaleString() || 0} KRW</p>
                 </div>
               </div>
             )}
