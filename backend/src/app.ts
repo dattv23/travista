@@ -17,6 +17,8 @@ import { reviewRouter } from '@/modules/review/review.route'
 
 const app = express()
 
+app.set('trust proxy', 1)
+
 // Security & performance middlewares
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }))
 app.use(helmet())
