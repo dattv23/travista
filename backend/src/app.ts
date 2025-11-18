@@ -17,6 +17,8 @@ import { reviewRouter } from '@/modules/review/review.route'
 
 const app = express()
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 app.set('trust proxy', 1)
 
 // Security & performance middlewares
@@ -29,9 +31,11 @@ app.use(
     secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
   })
