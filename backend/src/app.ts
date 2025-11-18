@@ -14,6 +14,7 @@ import '@/config/passport.setup'
 import { plannerRouter } from '@/modules/planner/planner.route'
 import { mapperRouter } from '@/modules/mapper/mapper.route'
 import { reviewRouter } from '@/modules/review/review.route'
+import MongoStore from 'connect-mongo'
 
 const app = express()
 
@@ -22,7 +23,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 app.set('trust proxy', 1)
 
 // Security & performance middlewares
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }))
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }))
 app.use(helmet())
 app.use(compression())
 app.use(express.json())
@@ -32,6 +33,10 @@ app.use(
     resave: false,
     saveUninitialized: false,
     proxy: true,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: 'sessions'
+    }),
     cookie: {
       httpOnly: true,
       secure: isProduction,
