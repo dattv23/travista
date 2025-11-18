@@ -23,12 +23,20 @@ export const authController = {
   },
 
   async googleCallback(req: Request, res: Response) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+    const frontendUrl = process.env.CLIENT_URL || 'http://localhost:3000'
 
     if (!req.user) {
       return res.redirect(`${frontendUrl}/auth/login?error=google_failed`)
     }
-    res.redirect(frontendUrl)
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err)
+        return res.redirect(`${frontendUrl}/auth/login?error=session_save_failed`)
+      }
+
+      res.redirect(frontendUrl)
+    })
   },
 
   async getMe(req: Request, res: Response, next: NextFunction) {
