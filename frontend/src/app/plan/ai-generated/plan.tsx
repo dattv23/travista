@@ -241,6 +241,12 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
         {/* Map */}
         <div className='w-2/3 bg-gray-400 h-screen relative'>
+          <SummaryModal 
+            isOpen={summaryModal.isOpen} 
+            onClose={summaryModal.close} 
+            isLoading={isLoadingSummary}
+            data={summaryData}
+          />
           <DynamicNaverMap
             path={itinerary}
           />
