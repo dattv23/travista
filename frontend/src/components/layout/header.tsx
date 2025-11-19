@@ -61,7 +61,8 @@ export default function Header() {
         <div className="flex paragraph-p2-medium gap-[50px]">
           {navLinks.map((nav, index) => {
             const isActive = pathname === nav.path;
-            const path = userLoggedIn ? nav.path : '/auth/login';
+            const isProtected = nav.path === '/plan';
+            const path = (isProtected && !userLoggedIn) ? '/auth/login' : nav.path;
             return(
               <Link key={index} href={path} className={`relative group ${isActive && 'text-primary'}`}>
                 {nav.title}
