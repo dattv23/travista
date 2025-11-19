@@ -8,6 +8,7 @@ import { AddModal } from '@/components/ui/addModal';
 import PlanCard from '@/components/ui/planCard';
 import { useModal } from '@/hooks/useModal';
 import { SummaryModal } from '@/components/ui/summaryModal';
+import { ReviewSummaryData } from '@/types/review';
 
 interface MapPoint {
   lat: number,
@@ -124,6 +125,34 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
   const [isModalOpen, setIsModalOpen] = useState(addModal.isOpen);
   const [itinerary, setItinerary] = useState(initialItinerary);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [summaryData, setSummaryData] = useState<ReviewSummaryData | null>(null);
+
+  const handleGetSummary = async (locationName: string) => {
+    setIsLoadingSummary(true);
+    setSummaryData(null);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/reviews/summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ locationName }), 
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch summary');
+      }
+
+      const data = await response.json();
+      setSummaryData(data);
+    } catch (error) {
+      console.error("Error fetching summary:", error);
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
 
   const handleAddNewStop = (newStop: MapPoint) => {
     setItinerary([...itinerary, newStop]);
@@ -186,8 +215,15 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               return (
               <div 
                 key={index} 
-                className='w-full p-2 bg-white rounded-[8px] shadow-sm cursor-pointer hover:bg-gray-50 transition-colors'
-                onClick={summaryModal.open}
+                className={`w-full p-2 bg-white rounded-[8px] shadow-sm transition-colors border border-transparent hover:border-primary ${
+                  plan.type === 'location' ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'
+                }`}
+                // 2. Logic for click: Only fetch and open if it's a location
+                onClick={() => {
+                  if (plan.type === 'location') {
+                    handleGetSummary(plan.name); // This fetches data AND opens the modal
+                  }
+                }}
               >
                 <PlanCard
                   type={plan.type}
@@ -208,7 +244,12 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           <DynamicNaverMap
             path={itinerary}
           />
-          <SummaryModal isOpen={summaryModal.isOpen} onClose={summaryModal.close} />
+          <SummaryModal 
+            isOpen={summaryModal.isOpen} 
+            onClose={summaryModal.close} 
+            isLoading={isLoadingSummary}
+            data={summaryData}
+          />
         </div>
       </section>
 
