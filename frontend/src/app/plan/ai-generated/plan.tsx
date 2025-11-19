@@ -123,7 +123,6 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
   const addModal = useModal();
   const summaryModal = useModal();
 
-  const [isModalOpen, setIsModalOpen] = useState(addModal.isOpen);
   const [itinerary, setItinerary] = useState(initialItinerary);
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summaryData, setSummaryData] = useState<ReviewSummaryData | null>(null);
@@ -156,7 +155,6 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
   const handleAddNewStop = (newStop: MapPoint) => {
     setItinerary([...itinerary, newStop]);
-    setIsModalOpen(false);
   }
 
   return (
@@ -253,7 +251,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         </div>
       </section>
 
-      {isModalOpen && (
+      {addModal.isOpen && (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-dark-text/20'>
           <AddModal isOpen={addModal.isOpen} onClose={addModal.close}/>
         </div>

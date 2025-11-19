@@ -8,14 +8,29 @@ import ImageDropzone from "./imageDropzone";
 interface AddModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: (locationName: string) => void;
 }
 
-export function AddModal({ isOpen, onClose } : AddModalProps) {
+interface AnalyzeResponse {
+  success: boolean;
+  locationName?: string; // This is the fallback string
+  data?: {
+    nameKR?: string;
+    nameEN?: string;
+    lat?: number | null;
+    lng?: number | null;
+  };
+}
+
+export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
   if (!isOpen) return null;
 
   const [modeActive, setModeActive] = useState("input");
   const [inputValue, setInputValue] = useState("");
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
 
   const getButtonClasses = (mode: string) => {
     const isActive = modeActive === mode;
@@ -29,6 +44,39 @@ export function AddModal({ isOpen, onClose } : AddModalProps) {
     console.log('Image upload: ', file);
     setUploadedImage(file);
   }
+
+  const handleSendImage = async () => {
+    if (!uploadedImage) return;
+
+    setIsLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedImage);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/analyze/image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Server Error Detail:", errorData); 
+        throw new Error(errorData.message || 'Failed to analyze');
+      }
+
+      const result: AnalyzeResponse = await response.json();
+
+      if (result.success) {
+        const name: any = result.data?.nameEN || result.data?.nameKR || result.locationName;
+        setDetectedLocation(name);
+      }
+    } catch (error) {
+      console.error("Error: ", error);
+    } finally {
+      setIsLoading(false);
+    }
+  } 
 
   return(
     <div className="w-full max-w-md p-4 bg-white rounded-lg shadow-lg border border-gray-200">
@@ -72,14 +120,20 @@ export function AddModal({ isOpen, onClose } : AddModalProps) {
           <div className="flex flex-col gap-3">
             <ImageDropzone onImageUpload={handleImageUpload} />
             {uploadedImage && (
-              <div className="flex justify-between">
-                <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
-                  <p className="text-sm text-gray-700 font-medium">Uploaded file: {uploadedImage.name}</p>
+              <>
+                <div className="flex justify-between">
+                  <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
+                    <p className="text-sm text-gray-700 font-medium">Uploaded file: {uploadedImage.name}</p>
+                  </div>
+                  <button
+                    className="bg-primary text-light-text px-4 mt-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                    onClick={handleSendImage}
+                  >
+                    {isLoading ? 'Processing...' : 'Add'}
+                  </button>
                 </div>
-                <button
-                  className="bg-primary text-light-text px-4 mt-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
-                >Add</button>
-              </div>
+                {detectedLocation && <p>{detectedLocation}</p>}
+              </>
             )}
           </div>
         )}

@@ -15,6 +15,7 @@ import { plannerRouter } from '@/modules/planner/planner.route'
 import { mapperRouter } from '@/modules/mapper/mapper.route'
 import { reviewRouter } from '@/modules/review/review.route'
 import MongoStore from 'connect-mongo'
+import { analyzeRouter } from './modules/analyze-image/analyze.route'
 
 const app = express()
 
@@ -58,6 +59,7 @@ app.use('/api/users', userRouter)
 app.use('/api/planner', plannerRouter)
 app.use('/api/mapper', mapperRouter)
 app.use('/api/reviews', reviewRouter)
+app.use('/api/analyze', analyzeRouter)
 
 // Global error handler
 app.use(errorHandler)
