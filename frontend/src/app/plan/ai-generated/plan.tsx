@@ -244,12 +244,6 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           <DynamicNaverMap
             path={itinerary}
           />
-          <SummaryModal 
-            isOpen={summaryModal.isOpen} 
-            onClose={summaryModal.close} 
-            isLoading={isLoadingSummary}
-            data={summaryData}
-          />
         </div>
       </section>
 
