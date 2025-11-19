@@ -1,5 +1,5 @@
 
-import { DirectionsBusFilledOutlined, DirectionsSubwayFilledOutlined, StorefrontOutlined } from '@mui/icons-material';
+import { DirectionsBusFilledOutlined, DirectionsSubwayFilledOutlined, StorefrontOutlined, FmdGoodOutlined } from '@mui/icons-material';
 
 interface PlanCardProps {
   type: string;
@@ -19,14 +19,17 @@ export default function PlanCard({
   numberOfStops,
 }: PlanCardProps) {
 
+
+  const normaltype = ["restaurant", "attraction"].includes(type) ? "location" : type;
+
   const iconList = [
-    {type: "location", icon: ""},
+    {type: "location", icon: <FmdGoodOutlined />},
     {type: "bus", icon: <DirectionsBusFilledOutlined />},
     {type: "subway", icon: <DirectionsSubwayFilledOutlined />},
   ];
   const transportation = ["bus", "subway"];
 
-  const displayingIcon = iconList.find(item => item.type === type);
+  const displayingIcon = iconList.find(item => item.type === normaltype);
 
 
   return (
@@ -39,7 +42,7 @@ export default function PlanCard({
           <p className='flex justify-between paragraph-p2-bold text-dark-text'>{name} <span className='paragraph-p3-medium text-secondary'>{duration}</span></p>
           <p className='w-full flex justify-between paragraph-p4-medium text-sub-text'>Est. {estTime} {type in transportation && <span >{numberOfStops}</span>}</p>
         </div>
-        {type === "location" && (
+        {normaltype === "location" && (
           <div>
             <p className='paragraph-p3-regular text-dark-text'>Summary: {summary}</p>
           </div>
