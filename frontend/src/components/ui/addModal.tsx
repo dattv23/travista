@@ -5,11 +5,13 @@ import { useState } from "react";
 import { FmdGoodOutlined, CloseOutlined } from '@mui/icons-material';
 import ImageDropzone from "./imageDropzone";
 
-interface AddCardProps {
-  handleClose: () => void;
+interface AddModalProps {
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function AddCard({ handleClose } : AddCardProps) {
+export function AddModal({ isOpen, onClose } : AddModalProps) {
+  if (!isOpen) return null;
 
   const [modeActive, setModeActive] = useState("input");
   const [inputValue, setInputValue] = useState("");
@@ -33,7 +35,7 @@ export function AddCard({ handleClose } : AddCardProps) {
       <div className="flex justify-between items-start">
         <p className="paragraph-p1-semibold text-dark-text mb-4">Add new stop</p>
         <button 
-          onClick={handleClose}
+          onClick={onClose}
           className="flex items-start transition cursor-pointer p-2 rounded-full hover:bg-hover"
         >
           <CloseOutlined />
