@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const googleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/google`;
+    window.location.href = `${process.env.NEXT_PUBLIC_NODE_API_URL}/api/auth/google/callback`;
   };
 
   const logout = async () => {
