@@ -7,10 +7,13 @@ import { useState, useEffect } from 'react';
 import { AddCard } from '@/components/ui/addCard';
 import PlanCard from '@/components/ui/planCard';
 import { useRouteDrawing } from '@/hooks/useRouteDrawing';
+import { usePlanner } from '@/hooks/usePlanner';
+import { plannerService } from '@/services/plannerService';
 
 interface MapPoint {
   lat: number,
   lng: number,
+  name?: string,
 }
 
 interface PlanClientUIProps {
@@ -119,10 +122,63 @@ const DynamicNaverMap = dynamic(
 export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [itinerary, setItinerary] = useState(initialItinerary);
+  const [itinerary, setItinerary] = useState<MapPoint[]>(initialItinerary);
   
-  // Route drawing hook
-  const { route, loading, error, drawRoute } = useRouteDrawing();
+  // Planner hook - to fetch itinerary from backend
+  const { 
+    places, 
+    restaurants, 
+    itinerary: generatedItinerary, 
+    loading: plannerLoading, 
+    error: plannerError 
+  } = usePlanner();
+
+  // Route drawing hook - to draw routes on map
+  const { route, loading: routeLoading, error: routeError, drawRoute } = useRouteDrawing();
+
+  // Fetch itinerary from backend on component mount
+  useEffect(() => {
+    const fetchItinerary = async () => {
+      try {
+        // First geocode the location string to coordinates
+        const destination = await plannerService.geocodeLocation(searchParams.location);
+        
+        // Parse duration (e.g., "3 days" -> 3)
+        const numberOfDays = parseInt(searchParams.duration.split(' ')[0]) || 1;
+        
+        // Call the planner API
+        // await createItinerary({
+        //   destination,
+        //   startDate: searchParams.date,
+        //   numberOfDays,
+        //   people: searchParams.people,
+        //   budget: searchParams.budget,
+        //   theme: searchParams.theme,
+        // });
+        
+        console.log('TODO: Integrate with backend planner API');
+        console.log('Destination:', destination);
+      } catch (error) {
+        console.error('Failed to fetch itinerary:', error);
+      }
+    };
+
+    if (searchParams.location) {
+      // fetchItinerary(); // Uncomment when ready to integrate
+    }
+  }, [searchParams]);
+
+  // Convert places from API to itinerary points for map
+  useEffect(() => {
+    if (places.length > 0) {
+      const mapPoints: MapPoint[] = places.map(place => ({
+        lat: place.lat,
+        lng: place.lng,
+        name: place.name,
+      }));
+      setItinerary(mapPoints);
+    }
+  }, [places]);
 
   // Automatically fetch route when itinerary changes
   useEffect(() => {
@@ -175,8 +231,31 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                 <p className="paragraph-p3-medium text-sub-text">Budget: {searchParams.budget}</p>
               </div>
             </div>
+            {/* Loading States */}
+            {plannerLoading && (
+              <div className='bg-yellow-50 p-4 rounded-lg mb-4 animate-pulse'>
+                <p className='paragraph-p3-medium mb-2'>🤖 AI is planning your trip...</p>
+                <p className='paragraph-p4-regular text-gray-600'>This may take a few moments</p>
+              </div>
+            )}
+
+            {routeLoading && !plannerLoading && (
+              <div className='bg-yellow-50 p-3 rounded-lg mb-4'>
+                <p className='paragraph-p4-regular'>⏳ Loading route...</p>
+              </div>
+            )}
+
+            {/* Errors */}
+            {(plannerError || routeError) && (
+              <div className='bg-red-50 p-3 rounded-lg mb-4'>
+                <p className='paragraph-p4-regular text-red-600'>
+                  {plannerError || routeError}
+                </p>
+              </div>
+            )}
+
             {/* Route Summary */}
-            {route && route.summary && (
+            {route && route.summary && !plannerLoading && (
               <div className='bg-blue-50 p-4 rounded-lg mb-4'>
                 <h3 className='paragraph-p3-semibold mb-2'>✅ Route Summary</h3>
                 <div className='paragraph-p4-regular space-y-1'>
@@ -188,15 +267,12 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               </div>
             )}
 
-            {loading && (
-              <div className='bg-yellow-50 p-3 rounded-lg mb-4'>
-                <p className='paragraph-p4-regular'>⏳ Loading route...</p>
-              </div>
-            )}
-
-            {error && (
-              <div className='bg-red-50 p-3 rounded-lg mb-4'>
-                <p className='paragraph-p4-regular text-red-600'>{error}</p>
+            {/* Places Summary */}
+            {places.length > 0 && (
+              <div className='bg-green-50 p-4 rounded-lg mb-4'>
+                <h3 className='paragraph-p3-semibold mb-2'>📍 Discovered Locations</h3>
+                <p className='paragraph-p4-regular'>{places.length} attractions found</p>
+                <p className='paragraph-p4-regular'>{restaurants.length} restaurants nearby</p>
               </div>
             )}
 
