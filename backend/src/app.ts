@@ -9,6 +9,7 @@ import { connectDatabase } from '@/database/connection'
 import { errorHandler } from '@/middlewares/errorHandler'
 import { userRouter } from '@/modules/user/user.route'
 import { authRouter } from './modules/auth/auth.route'
+import { searchRouter } from './modules/search/search.route'
 
 import '@/config/passport.setup'
 import { plannerRouter } from '@/modules/planner/planner.route'
@@ -58,6 +59,7 @@ app.use('/api/users', userRouter)
 app.use('/api/planner', plannerRouter)
 app.use('/api/mapper', mapperRouter)
 app.use('/api/reviews', reviewRouter)
+app.use('/api/search', searchRouter)
 
 // Global error handler
 app.use(errorHandler)
