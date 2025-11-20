@@ -3,10 +3,11 @@
 import { ArrowCircleLeft } from '@mui/icons-material';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AddCard } from '@/components/ui/addCard';
 import PlanCard from '@/components/ui/planCard';
 import { useRouteDrawing } from '@/hooks/useRouteDrawing';
+import { ItineraryResponse, plannerService, ParsedItinerary } from '@/services/plannerService';
 
 interface MapPoint {
   lat: number,
@@ -22,7 +23,8 @@ interface PlanClientUIProps {
     budget: string;
     theme: string;
   };
-  initialItinerary: MapPoint[]; 
+  itineraryData: ItineraryResponse | null;
+  error: string | null;
 }
 
 const mockPlanData = [
@@ -116,10 +118,28 @@ const DynamicNaverMap = dynamic(
   }
 )
 
-export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIProps) {
+export default function PlanUI({ searchParams, itineraryData, error: fetchError }: PlanClientUIProps) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [itinerary, setItinerary] = useState(initialItinerary);
+  
+  // Parse the itinerary JSON string
+  const parsedItinerary: ParsedItinerary | null = useMemo(() => {
+    if (!itineraryData?.itinerary) return null;
+    return plannerService.parseItinerary(itineraryData.itinerary);
+  }, [itineraryData]);
+
+  // Extract locations from itinerary data
+  const locations: MapPoint[] = useMemo(() => {
+    if (!itineraryData) return [];
+    return plannerService.extractLocations(itineraryData);
+  }, [itineraryData]);
+
+  const [itinerary, setItinerary] = useState<MapPoint[]>(locations);
+  
+  // Update itinerary when locations change
+  useEffect(() => {
+    setItinerary(locations);
+  }, [locations]);
   
   // Route drawing hook
   const { route, loading, error, drawRoute } = useRouteDrawing();
@@ -167,11 +187,13 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               <div className='flex flex-col gap-2'>
                 <p className="paragraph-p3-medium text-dark-text">{searchParams.theme} itinerary</p>
                 <p className="paragraph-p3-medium text-sub-text">Start date: {searchParams.date}</p>
-                <p className="paragraph-p3-medium text-sub-text">Est. 15 hours (5 locations)</p>
+                <p className="paragraph-p3-medium text-sub-text">
+                  {itineraryData ? `${itineraryData.places.length} locations` : 'Loading...'}
+                </p>
               </div>
               <div className='flex flex-col gap-2'>
                 <p className="paragraph-p3-medium text-sub-text">{searchParams.people}</p>
-                <p className="paragraph-p3-medium text-sub-text">Duration: {searchParams.duration}</p>
+                <p className="paragraph-p3-medium text-sub-text">Duration: {searchParams.duration} days</p>
                 <p className="paragraph-p3-medium text-sub-text">Budget: {searchParams.budget}</p>
               </div>
             </div>
@@ -200,6 +222,14 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               </div>
             )}
 
+            {/* Display error if API call failed */}
+            {fetchError && (
+              <div className='bg-red-50 p-4 rounded-lg mb-4'>
+                <p className='paragraph-p4-semibold text-red-600'>⚠️ Error loading itinerary</p>
+                <p className='paragraph-p4-regular text-red-500'>{fetchError}</p>
+              </div>
+            )}
+
             <div className='flex justify-between mt-5'>
               <button></button>
               <div className='paragraph-p3-medium flex gap-5'>
@@ -220,18 +250,54 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           <hr className='text-divider m-2.5'/>
           {/* Main Content Area */}
           <div className='flex-1 overflow-y-auto flex flex-col gap-4 pb-10'>
-            {mockPlanData.map((plan, index) => (
-              <div key={index} className='w-full p-2 bg-white rounded-[8px] shadow-sm'>
-                <PlanCard
-                  type={plan.type}
-                  name={plan.name}
-                  duration={plan.duration}
-                  estTime={plan.estTime}
-                  summary={plan.summary}
-                  numberOfStops={plan.numberOfStops}
-                />
+            {/* Show loading state */}
+            {!parsedItinerary && !fetchError && (
+              <div className='w-full p-4 bg-blue-50 rounded-[8px]'>
+                <p className='paragraph-p3-regular text-blue-600'>⏳ Loading your itinerary...</p>
+              </div>
+            )}
+
+            {/* Show itinerary from API */}
+            {parsedItinerary && parsedItinerary.days.map((day, dayIndex) => (
+              <div key={dayIndex} className='w-full'>
+                <div className='paragraph-p3-semibold text-primary mb-2'>
+                  Day {day.day_index} - {day.date}
+                </div>
+                {day.timeline.map((item, itemIndex) => (
+                  <div key={itemIndex} className='w-full p-2 bg-white rounded-[8px] shadow-sm mb-2'>
+                    <PlanCard
+                      type="location"
+                      name={item.name}
+                      duration={`${item.start_time} - ${item.end_time}`}
+                      estTime={`${item.duration_minutes} mins`}
+                      summary={item.note}
+                      numberOfStops={null}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
+
+            {/* Fallback to mock data if no itinerary */}
+            {!parsedItinerary && !fetchError && mockPlanData.length > 0 && (
+              <>
+                <div className='paragraph-p4-regular text-gray-500 mb-2'>
+                  (Showing mock data)
+                </div>
+                {mockPlanData.map((plan, index) => (
+                  <div key={index} className='w-full p-2 bg-white rounded-[8px] shadow-sm'>
+                    <PlanCard
+                      type={plan.type}
+                      name={plan.name}
+                      duration={plan.duration}
+                      estTime={plan.estTime}
+                      summary={plan.summary}
+                      numberOfStops={plan.numberOfStops}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
 

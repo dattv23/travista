@@ -10,7 +10,18 @@ export const plannerService = {
   async getTouristAttractions(state: IItineraryState): Promise<IItineraryState> {
     logger.info('Fetching tourist attractions...')
 
+    // Check if API key exists
+    if (!process.env.KAKAO_REST_API_KEY) {
+      logger.error('❌ KAKAO_REST_API_KEY is not set in environment variables!')
+      throw new Error('KAKAO_REST_API_KEY is missing. Please add it to your .env file.')
+    }
+
+    const apiKey = process.env.KAKAO_REST_API_KEY
+    logger.info(`Using Kakao API key: ${apiKey.substring(0, 8)}...`)
+
     try {
+      logger.info(`Searching near: lat=${state.userInput.destination.lat}, lng=${state.userInput.destination.lng}`)
+      
       const res = await axios.get('https://dapi.kakao.com/v2/local/search/category.json', {
         params: {
           category_group_code: 'AT4',
@@ -21,9 +32,11 @@ export const plannerService = {
           sort: 'distance'
         },
         headers: {
-          Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY!}`
+          Authorization: `KakaoAK ${apiKey}`
         }
       })
+
+      logger.info(`✅ Found ${res.data.documents.length} tourist attractions`)
 
       state.places = res.data.documents.map((p: { place_name: string; road_address_name: string; address_name: string; y: string; x: string; id: string }) => ({
         name: p.place_name,
@@ -34,8 +47,20 @@ export const plannerService = {
       }))
 
       return state
-    } catch (error) {
-      logger.error('Error fetching tourist attractions:', error)
+    } catch (error: any) {
+      logger.error('❌ Error fetching tourist attractions:', error.message)
+      
+      if (error.response) {
+        logger.error('Status:', error.response.status)
+        logger.error('Status Text:', error.response.statusText)
+        logger.error('Response Data:', JSON.stringify(error.response.data, null, 2))
+        
+        if (error.response.status === 401) {
+          logger.error('⚠️  Authentication failed! Your KAKAO_REST_API_KEY is invalid or expired.')
+          throw new Error('Kakao API authentication failed. Please check your KAKAO_REST_API_KEY in .env file.')
+        }
+      }
+      
       throw error
     }
   },
@@ -58,6 +83,8 @@ export const plannerService = {
         }
       })
 
+      logger.info(`✅ Found ${res.data.documents.length} restaurants`)
+
       const restaurants = res.data.documents.map((r: IKakaoMapsResponse) => ({
         name: r.place_name,
         address: r.road_address_name || r.address_name,
@@ -73,8 +100,14 @@ export const plannerService = {
 
       state.restaurants = restaurants
       return state
-    } catch (error) {
-      logger.error('Error fetching restaurants:', error)
+    } catch (error: any) {
+      logger.error('❌ Error fetching restaurants:', error.message)
+      
+      if (error.response) {
+        logger.error('Status:', error.response.status)
+        logger.error('Response Data:', JSON.stringify(error.response.data, null, 2))
+      }
+      
       throw error
     }
   },

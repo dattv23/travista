@@ -49,6 +49,8 @@ export const mapperController = {
     try {
       const { locations } = req.body
 
+      console.log('📍 Received draw-route request with locations:', locations)
+
       if (!locations || !Array.isArray(locations) || locations.length < 2) {
         return res.status(400).json({
           success: false,
@@ -65,7 +67,10 @@ export const mapperController = {
 
       const result = await mapperService.createRouteFromLocations(locations)
       
+      console.log('📦 Received result from Naver API:', JSON.stringify(result, null, 2))
+
       if (result.code !== 0) {
+        console.error('❌ Naver API returned error code:', result.code, result.message)
         return res.status(400).json({
           success: false,
           code: result.code,
@@ -73,11 +78,27 @@ export const mapperController = {
         })
       }
 
-      // Extract route data for drawing
-      const routeKey = Object.keys(result.route)[0]
-      const route = result.route[routeKey][0]
+      // Extract route data for drawing - with better error handling
+      if (!result.route || typeof result.route !== 'object') {
+        throw new Error('Invalid route data structure: route object missing')
+      }
 
-      res.status(200).json({
+      const routeKey = Object.keys(result.route)[0]
+      if (!routeKey) {
+        throw new Error('Invalid route data structure: no route key found')
+      }
+
+      const routeArray = result.route[routeKey]
+      if (!Array.isArray(routeArray) || routeArray.length === 0) {
+        throw new Error('Invalid route data structure: route array is empty or invalid')
+      }
+
+      const route = routeArray[0]
+      if (!route || !route.summary || !route.path) {
+        throw new Error('Invalid route data structure: missing summary or path')
+      }
+
+      const responseData = {
         success: true,
         data: {
           summary: {
@@ -91,8 +112,13 @@ export const mapperController = {
           guide: route.guide, // Turn-by-turn directions
           fullData: result
         }
-      })
+      }
+
+      console.log('✅ Sending successful response')
+      res.status(200).json(responseData)
     } catch (error: any) {
+      console.error('❌ Draw-route error:', error)
+      console.error('Error stack:', error.stack)
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to create route',

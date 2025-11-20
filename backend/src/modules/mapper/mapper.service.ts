@@ -10,6 +10,15 @@ export const mapperService = {
    * option: 'trafast' | 'traoptimal' | 'tracomfort' | 'traavoidtoll' | 'traavoidcaronly'
    */
   async getDirections(start: string, goal: string, waypoints?: string, option: string = 'trafast') {
+    // Check environment variables
+    if (!process.env.NAVER_MAPS_CLIENT_ID || !process.env.NAVER_MAPS_CLIENT_SECRET) {
+      const missingVars = []
+      if (!process.env.NAVER_MAPS_CLIENT_ID) missingVars.push('NAVER_MAPS_CLIENT_ID')
+      if (!process.env.NAVER_MAPS_CLIENT_SECRET) missingVars.push('NAVER_MAPS_CLIENT_SECRET')
+      logger.error(`❌ Missing environment variables: ${missingVars.join(', ')}`)
+      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`)
+    }
+
     logger.info(`Getting directions: ${start} -> ${goal}`)
     if (waypoints) {
       logger.info(`Via waypoints: ${waypoints}`)
@@ -26,6 +35,7 @@ export const mapperService = {
     }
 
     try {
+      logger.info('Making request to Naver Maps API...')
       const response = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving', {
         params,
         headers: {
@@ -39,7 +49,11 @@ export const mapperService = {
     } catch (error: any) {
       logger.error('❌ Directions API Error:')
       logger.error('Status:', error.response?.status)
+      logger.error('Status Text:', error.response?.statusText)
       logger.error('Data:', JSON.stringify(error.response?.data, null, 2))
+      if (error.response?.status === 401) {
+        logger.error('⚠️ Authentication failed - check your API keys!')
+      }
       throw error
     }
   },
