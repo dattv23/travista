@@ -139,8 +139,10 @@ export const reviewService = {
 
       // Translate to English
       const summaryEN = await this.translateToEnglish(summaryKR)
+      const locationEN = await this.translateToEnglish(data.locationName)
       return {
-        location: data.locationName,
+        locationKR: data.locationName,
+        locationEN: locationEN,
         summaryKR: summaryKR,
         summaryEN: summaryEN,
         sources: linkBlogs
