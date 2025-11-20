@@ -13,13 +13,21 @@ interface AddModalProps {
 
 interface AnalyzeResponse {
   success: boolean;
-  locationName?: string; // This is the fallback string
+  locationName?: string; 
   data?: {
     nameKR?: string;
     nameEN?: string;
+    description?: string;
     lat?: number | null;
     lng?: number | null;
+    note?: string | null;
   };
+}
+
+interface ScanResult {
+  name: string;          
+  description?: string;  
+  note?: string | null;  
 }
 
 export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
@@ -30,7 +38,9 @@ export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [detectedLocation, setDetectedLocation] = useState<string | null>(null);
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+
+  // const isValidLocation = detectedLocation && detectedLocation !== "Unknown location" && !note;
 
   const getButtonClasses = (mode: string) => {
     const isActive = modeActive === mode;
@@ -49,6 +59,7 @@ export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
     if (!uploadedImage) return;
 
     setIsLoading(true);
+    setScanResult(null);
 
     try {
       const formData = new FormData();
@@ -69,7 +80,11 @@ export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
 
       if (result.success) {
         const name: any = result.data?.nameEN || result.data?.nameKR || result.locationName;
-        setDetectedLocation(name);
+        setScanResult({
+          name: name,
+          description: result.data?.description,
+          note: result.data?.note
+        });
       }
     } catch (error) {
       console.error("Error: ", error);
@@ -129,10 +144,52 @@ export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
                     className="bg-primary text-light-text px-4 mt-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
                     onClick={handleSendImage}
                   >
-                    {isLoading ? 'Processing...' : 'Add'}
+                    {isLoading ? 'Processing...' : 'Scan'}
                   </button>
                 </div>
-                {detectedLocation && <p>{detectedLocation}</p>}
+                {scanResult && (
+                  <>
+                    <hr className="text-divider my-2" />
+                    <div className="flex justify-between items-center">
+                      
+                      <div className="flex flex-col gap-1">
+                        {scanResult.name === "Unknown location" ? (
+                          <p className="paragraph-p4-regular text-red-600">
+                            * Cannot identify this location. Please try another image.
+                          </p>
+                        ) : (
+                          <>
+                            {scanResult.note && <p className="paragraph-p4-regular text-red-600">
+                              * Location is not in Korea. Please try another image.
+                            </p>}
+                            <p className="paragraph-p3-medium text-dark-text">
+                              This location is <span className="text-primary">{scanResult.name}</span>
+                            </p>
+                            {scanResult.description && (
+                              <p className="paragraph-p4-regular text-sub-text">
+                                {scanResult.description}
+                              </p>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {(scanResult.name !== "Unknown location" && !scanResult.note) && (
+                        <button
+                          onClick={() => {
+                            if (onConfirm) {
+                              onConfirm(scanResult.name);
+                              onClose();
+                            }
+                          }}
+                          className="bg-primary text-light-text px-4 py-2.5 ml-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] whitespace-nowrap"
+                        >
+                          Add
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
