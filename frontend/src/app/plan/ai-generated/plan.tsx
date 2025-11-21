@@ -3,7 +3,7 @@
 import { ArrowCircleLeft } from '@mui/icons-material';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AddCard } from '@/components/ui/addCard';
 import PlanCard from '@/components/ui/planCard';
 import { usePlanner } from '@/hooks/usePlanner';
@@ -123,57 +123,53 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
   const { isLoading, error, itinerary: plannerItinerary, pins, createItinerary } = usePlanner();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itinerary, setItinerary] = useState(initialItinerary);
-  const [hasGenerated, setHasGenerated] = useState(false);
+
+  // Prevent double fetching
+  const hasInitiatedRef = useRef(false);
+
+  const generatePlan = useCallback(() => {
+    if (!initialItinerary.length || !initialItinerary[0].lat || !initialItinerary[0].lng) {
+      console.error("Missing coordinates for itinerary generation");
+      return;
+    }
+
+    const lat = initialItinerary[0].lat;
+    const lng = initialItinerary[0].lng;
+
+    // console.log('Triggering AI Planner:', { lat, lng });
+
+    const durationMatch = searchParams.duration?.match(/(\d+)/);
+    const numberOfDays = durationMatch ? parseInt(durationMatch[1]) : 1;
+
+    let startDate = searchParams.date;
+    if (startDate.includes('/')) {
+      const [day, month, year] = startDate.split('/');
+      startDate = `${year}-${month}-${day}`;
+    }
+
+    const request: PlannerRequest = {
+      destination: { lat, lng },
+      startDate: startDate,
+      numberOfDays: numberOfDays,
+      people: searchParams.people,
+      budget: searchParams.budget,
+      theme: searchParams.theme,
+    };
+
+    createItinerary(request)
+      .then(() => console.log('AI Itinerary Generated Successfully'))
+      .catch((err) => console.error('AI Generation Failed:', err));
+
+  }, [initialItinerary, searchParams, createItinerary]);
 
   useEffect(() => {
-    console.log('🔍 PlanUI Debug:', {
-      hasGenerated,
-      initialItinerary,
-      searchParams,
-      lat: initialItinerary[0]?.lat,
-      lng: initialItinerary[0]?.lng,
-    });
-
-    if (!hasGenerated && initialItinerary.length > 0 && initialItinerary[0].lat && initialItinerary[0].lng) {
-      const lat = initialItinerary[0].lat;
-      const lng = initialItinerary[0].lng;
-
-      console.log('📍 Calling planner API with coordinates:', { lat, lng, location: searchParams.location });
-
-      const durationMatch = searchParams.duration?.match(/(\d+)/);
-      const numberOfDays = durationMatch ? parseInt(durationMatch[1]) : 3;
-
-      let startDate = searchParams.date || new Date().toISOString().split('T')[0];
-      if (startDate.includes('/')) {
-        const dateParts = startDate.split('/');
-        if (dateParts.length === 3) {
-          startDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-        }
-      }
-
-      const request: PlannerRequest = {
-        destination: { lat, lng },
-        startDate: startDate,
-        numberOfDays: numberOfDays,
-        people: searchParams.people || '2 adults',
-        budget: searchParams.budget || 'moderate',
-        theme: searchParams.theme || 'cultural and food',
-      };
-
-      console.log('📤 Planner API Request:', request);
-
-      setHasGenerated(true);
-      createItinerary(request)
-        .then(() => {
-          console.log('✅ Planner API Success');
-        })
-        .catch((err) => {
-          console.error('❌ Failed to generate itinerary:', err);
-          setHasGenerated(false);
-        });
+    if (!hasInitiatedRef.current) {
+      hasInitiatedRef.current = true;
+      generatePlan();
     }
-  }, [initialItinerary, searchParams, hasGenerated, createItinerary]);
+  }, [generatePlan]);
 
+  // Update map when data comes back
   useEffect(() => {
     if (plannerItinerary && plannerItinerary.places.length > 0) {
       const mapPoints: MapPoint[] = [
@@ -189,6 +185,11 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       setItinerary(mapPoints);
     }
   }, [plannerItinerary]);
+
+  const handleRetry = () => {
+    console.log("Retrying generation...");
+    generatePlan();
+  };
 
   const handleOpenAddModal = () => {
     setIsModalOpen(true);
@@ -256,49 +257,42 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           <div className='flex-1 overflow-y-auto flex flex-col gap-4 pb-10'>
             {isLoading && (
               <div className='w-full p-4 text-center'>
-                <p className='text-sub-text'>Generating your Incheon itinerary...</p>
+                <p className='text-sub-text'>Generating your {searchParams.theme} itinerary...</p>
               </div>
             )}
+            
             {error && (
-              <div className='w-full p-4 bg-red-100 border border-red-400 text-red-700 rounded-[8px]'>
-                <p>Error: {error}</p>
+              <div className='rounded-lg p-4 text-center'>
+                <p className="text-red-600 text-sm mb-3">Failed to generate plan.</p>
+                <p className="text-xs text-red-400 mb-3">{typeof error === 'string' ? error : 'Timeout or Server Error'}</p>
+                <button onClick={handleRetry} className='flex items-center justify-center gap-2 w-full bg-primary text-light-text py-2 rounded-md text-sm hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] transition cursor-pointer'>
+                  Try Again
+                </button>
               </div>
             )}
-            {plannerItinerary && plannerItinerary.places.length > 0 ? (
+
+            {!isLoading && !error && plannerItinerary?.places.length && (
               plannerItinerary.places.map((place, index) => (
-                <div key={index} className='w-full p-2 bg-white rounded-[8px] shadow-sm'>
+                <div key={index} className='w-full p-2 bg-white border border-gray-100 rounded-lg shadow-sm hover:shadow-md transition'>
                   <PlanCard
                     type="location"
                     name={place.name}
-                    duration={`Day ${Math.floor(index / 3) + 1}`}
-                    estTime="2-3 hours"
+                    duration={`Stop ${index + 1}`}
+                    estTime="~2 hours"
                     summary={place.address}
                     numberOfStops={null}
                   />
                 </div>
               ))
-            ) : !isLoading && !error ? (
-              mockPlanData.map((plan, index) => (
-                <div key={index} className='w-full p-2 bg-white rounded-[8px] shadow-sm'>
-                  <PlanCard
-                    type={plan.type}
-                    name={plan.name}
-                    duration={plan.duration}
-                    estTime={plan.estTime}
-                    summary={plan.summary}
-                    numberOfStops={plan.numberOfStops}
-                  />
-                </div>
-              ))
-            ) : null}
+            )}
           </div>
         </div>
 
         {/* Map */}
         <div className='w-3/4 bg-gray-400 h-screen'>
-          <DynamicNaverMap
+          {/* <DynamicNaverMap
             path={itinerary}
-          />
+          /> */}
         </div>
       </section>
 
