@@ -4,8 +4,11 @@ import { ArrowCircleLeft } from '@mui/icons-material';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { AddCard } from '@/components/ui/addCard';
+import { AddModal } from '@/components/ui/addModal';
 import PlanCard from '@/components/ui/planCard';
+import { useModal } from '@/hooks/useModal';
+import { SummaryModal } from '@/components/ui/summaryModal';
+import { ReviewSummaryData } from '@/types/review';
 import { usePlanner } from '@/hooks/usePlanner';
 import { PlannerRequest } from '@/types/planner';
 
@@ -121,7 +124,9 @@ const DynamicNaverMap = dynamic(
 
 export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIProps) {
   const { isLoading, error, itinerary: plannerItinerary, pins, createItinerary } = usePlanner();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const addModal = useModal();
+  const summaryModal = useModal();
+
   const [itinerary, setItinerary] = useState(initialItinerary);
 
   // Prevent double fetching
@@ -190,25 +195,44 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     console.log("Retrying generation...");
     generatePlan();
   };
+  const [isLoadingSummary, setIsLoadingSummary] = useState(false);
+  const [summaryData, setSummaryData] = useState<ReviewSummaryData | null>(null);
 
-  const handleOpenAddModal = () => {
-    setIsModalOpen(true);
-  }
-  
-  const handleCloseAddModal = () => {
-    setIsModalOpen(false);
-  }
+  const handleGetSummary = async (locationName: string) => {
+    setIsLoadingSummary(true);
+    setSummaryData(null);
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/reviews/summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ locationName }), 
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch summary');
+      }
+
+      const data = await response.json();
+      setSummaryData(data);
+    } catch (error) {
+      console.error("Error fetching summary:", error);
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
 
   const handleAddNewStop = (newStop: MapPoint) => {
     setItinerary([...itinerary, newStop]);
-    setIsModalOpen(false);
   }
 
   return (
     <>
       <section className="w-full min-h-screen pt-[92px] flex ">
         {/* left section */}
-        <div className='w-1/4 bgb-transparent shadow-xl px-[18px] h-screen flex flex-col'>
+        <div className='w-1/3 bgb-transparent shadow-xl px-[18px] h-screen flex flex-col'>
           <div className='pt-4'>
             {/* Title */}
             <div>
@@ -245,7 +269,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                 </button>
                 <button
                   className='bg-primary text-light-text p-2.5 border-2 border-primary rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]'
-                  onClick={handleOpenAddModal}
+                  onClick={addModal.open}
                 >
                   Add new stop
                 </button>
@@ -289,16 +313,22 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         </div>
 
         {/* Map */}
-        <div className='w-3/4 bg-gray-400 h-screen'>
+        <div className='w-2/3 bg-gray-400 h-screen relative'>
+          <SummaryModal 
+            isOpen={summaryModal.isOpen} 
+            onClose={summaryModal.close} 
+            isLoading={isLoadingSummary}
+            data={summaryData}
+          />
           {/* <DynamicNaverMap
             path={itinerary}
           /> */}
         </div>
       </section>
 
-      {isModalOpen && (
+      {addModal.isOpen && (
         <div className='fixed inset-0 z-50 flex items-center justify-center bg-dark-text/20'>
-          <AddCard handleClose={handleCloseAddModal}/>
+          <AddModal isOpen={addModal.isOpen} onClose={addModal.close}/>
         </div>
       )}
     </>
