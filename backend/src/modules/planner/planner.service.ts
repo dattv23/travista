@@ -8,7 +8,10 @@ import { parseItinerary } from '@/utils/parseItinerary'
 
 export const plannerService = {
   async getTouristAttractions(state: IItineraryState): Promise<IItineraryState> {
-    logger.info('Fetching tourist attractions...')
+    logger.info('Fetching tourist attractions...', {
+      lat: state.userInput.destination.lat,
+      lng: state.userInput.destination.lng
+    })
 
     try {
       const res = await axios.get('https://dapi.kakao.com/v2/local/search/category.json', {
@@ -25,6 +28,25 @@ export const plannerService = {
         }
       })
 
+      logger.info('Kakao API response:', {
+        status: res.status,
+        hasDocuments: !!res.data?.documents,
+        documentCount: res.data?.documents?.length || 0,
+        meta: res.data?.meta
+      })
+
+      if (!res.data?.documents || res.data.documents.length === 0) {
+        logger.warn('No tourist attractions found from Kakao API', {
+          response: res.data,
+          params: {
+            lat: state.userInput.destination.lat,
+            lng: state.userInput.destination.lng
+          }
+        })
+        state.places = []
+        return state
+      }
+
       state.places = res.data.documents.map((p: { place_name: string; road_address_name: string; address_name: string; y: string; x: string; id: string }) => ({
         name: p.place_name,
         address: p.road_address_name || p.address_name,
@@ -33,9 +55,20 @@ export const plannerService = {
         kakaoId: p.id
       }))
 
+      logger.info(`Found ${state.places.length} tourist attractions:`, {
+        places: state.places.map(p => ({ name: p.name, address: p.address }))
+      })
       return state
     } catch (error) {
-      logger.error('Error fetching tourist attractions:', error)
+      logger.error('Error fetching tourist attractions:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        response: axios.isAxiosError(error) ? {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data
+        } : null,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       throw error
     }
   },
@@ -58,6 +91,18 @@ export const plannerService = {
         }
       })
 
+      logger.info('Kakao API restaurant response:', {
+        status: res.status,
+        hasDocuments: !!res.data?.documents,
+        documentCount: res.data?.documents?.length || 0
+      })
+
+      if (!res.data?.documents || res.data.documents.length === 0) {
+        logger.warn('No restaurants found from Kakao API')
+        state.restaurants = []
+        return state
+      }
+
       const restaurants = res.data.documents.map((r: IKakaoMapsResponse) => ({
         name: r.place_name,
         address: r.road_address_name || r.address_name,
@@ -72,29 +117,59 @@ export const plannerService = {
       restaurants.sort((a: IKakaoMapsResponse, b: IKakaoMapsResponse) => a.distance - b.distance)
 
       state.restaurants = restaurants
+      logger.info(`Found ${state.restaurants.length} restaurants:`, {
+        restaurants: state.restaurants.slice(0, 5).map(r => ({ name: r.name, address: r.address })) // Log first 5
+      })
       return state
     } catch (error) {
-      logger.error('Error fetching restaurants:', error)
+      logger.error('Error fetching restaurants:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        response: axios.isAxiosError(error) ? {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data
+        } : null,
+        stack: error instanceof Error ? error.stack : undefined
+      })
       throw error
     }
   },
 
   async getRoute(start: string, goal: string) {
-    const res = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving?option=trafast', {
-      params: { start, goal },
-      headers: {
-        'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
-        'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!
+    try {
+      if (!process.env.NAVER_MAPS_CLIENT_ID || !process.env.NAVER_MAPS_CLIENT_SECRET) {
+        logger.warn('Naver Maps API keys not configured, skipping route calculation')
+        return null
       }
-    })
 
-    const route = res.data?.route?.trafast?.[0]
-    return route
-      ? {
-          distance: route.summary.distance,
-          duration: route.summary.duration
+      const res = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving?option=trafast', {
+        params: { start, goal },
+        headers: {
+          'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
+          'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!
         }
-      : null
+      })
+
+      const route = res.data?.route?.trafast?.[0]
+      return route
+        ? {
+            distance: route.summary.distance,
+            duration: route.summary.duration
+          }
+        : null
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        logger.warn(`Naver Maps API error for route ${start} → ${goal}:`, {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message
+        })
+      } else {
+        logger.warn(`Error calculating route ${start} → ${goal}:`, error)
+      }
+      return null // Return null instead of throwing so the workflow can continue
+    }
   },
 
   async calculateDistanceToDestinationMatrix(state: IItineraryState): Promise<IItineraryState> {
@@ -271,17 +346,26 @@ export const plannerService = {
       itinerary: ''
     }
 
+    // Validate API key
+    if (!process.env.KAKAO_REST_API_KEY) {
+      throw new Error('KAKAO_REST_API_KEY environment variable is not set')
+    }
+
     // Execute workflow steps
     state = await this.getTouristAttractions(state)
 
     if (state.places.length === 0) {
-      throw new Error('No tourist attractions found in the area')
+      const errorMsg = `No tourist attractions found in the area at coordinates (${userInput.destination.lat}, ${userInput.destination.lng}). Please check if the location is correct and if Kakao API is returning results.`
+      logger.error(errorMsg)
+      throw new Error(errorMsg)
     }
 
     state = await this.getRestaurants(state)
 
     if (state.restaurants.length === 0) {
-      throw new Error('No restaurants found in the area')
+      const errorMsg = `No restaurants found in the area at coordinates (${userInput.destination.lat}, ${userInput.destination.lng}). Please check if the location is correct and if Kakao API is returning results.`
+      logger.error(errorMsg)
+      throw new Error(errorMsg)
     }
 
     state = await this.calculateDistanceToDestinationMatrix(state)

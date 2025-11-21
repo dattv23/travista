@@ -80,11 +80,16 @@ export default function Plan() {
       {} as { [key: number]: string },
     );
   });
+  const [selectedLocation, setSelectedLocation] = useState<{
+    name: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
-    console.log(answers);
-  }, [answers]);
+    console.log({ answers, selectedLocation });
+  }, [answers, selectedLocation]);
 
   const toggleOptionsDropdown = (index: number) => {
     setOpenDropdownIndex((prevIndex) => (prevIndex === index ? null : index));
@@ -117,7 +122,12 @@ export default function Plan() {
   };
 
   const handleLocationSelect = (location: { name: string; lat: number; lng: number }) => {
-    console.log('Selected Location:', location);
+    console.log('📍 Location selected:', location);
+    setSelectedLocation(location);
+    setAnswers((prevAnswers) => ({
+      ...prevAnswers,
+      0: location.name,
+    }));
   };
 
   return (
@@ -229,8 +239,16 @@ export default function Plan() {
               ))}
             </div>
             <Link
-              href={`/plan/ai-generated?location=${encodeURIComponent(answers[0] || '')}&date=${encodeURIComponent(answers[1] || '')}&duration=${encodeURIComponent(answers[2] || '')}&people=${encodeURIComponent(answers[3] || '')}&budget=${encodeURIComponent(answers[4] || '')}&theme=${encodeURIComponent(answers[5] || '')}`}
-              className="inline-box paragraph-p2-medium text-light-text bg-secondary mb-12 ml-[74px] max-w-max rounded-[8px] px-[25px] py-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)]"
+              href={`/plan/ai-generated?location=${encodeURIComponent(answers[0] || '')}&lat=${selectedLocation?.lat ?? ''}&lng=${selectedLocation?.lng ?? ''}&date=${encodeURIComponent(answers[1] || '')}&duration=${encodeURIComponent(answers[2] || '')}&people=${encodeURIComponent(answers[3] || '')}&budget=${encodeURIComponent(answers[4] || '')}&theme=${encodeURIComponent(answers[5] || '')}`}
+              className="inline-box paragraph-p2-medium text-light-text bg-secondary mb-12 ml-[74px] max-w-max rounded-[8px] px-[25px] py-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)] disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ pointerEvents: selectedLocation ? 'auto' : 'none' }}
+              onClick={() => {
+                console.log('🔗 Generating with:', {
+                  selectedLocation,
+                  answers,
+                  url: `/plan/ai-generated?location=${encodeURIComponent(answers[0] || '')}&lat=${selectedLocation?.lat ?? ''}&lng=${selectedLocation?.lng ?? ''}`,
+                });
+              }}
             >
               Generate
             </Link>
