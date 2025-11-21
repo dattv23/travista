@@ -141,7 +141,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     const lat = initialItinerary[0].lat;
     const lng = initialItinerary[0].lng;
 
-    // console.log('Triggering AI Planner:', { lat, lng });
+    console.log('Triggering AI Planner:', { lat, lng });
 
     const durationMatch = searchParams.duration?.match(/(\d+)/);
     const numberOfDays = durationMatch ? parseInt(durationMatch[1]) : 1;
@@ -153,13 +153,15 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
 
     const request: PlannerRequest = {
-      destination: { lat, lng },
+      destination: { lat: lat, lng: lng },
       startDate: startDate,
       numberOfDays: numberOfDays,
       people: searchParams.people,
       budget: searchParams.budget,
       theme: searchParams.theme,
     };
+
+    console.log('Request: ', request)
 
     createItinerary(request)
       .then(() => console.log('AI Itinerary Generated Successfully'))
@@ -179,8 +181,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     if (plannerItinerary && plannerItinerary.places.length > 0) {
       const mapPoints: MapPoint[] = [
         {
-          lat: plannerItinerary.userInput.destination.lat,
-          lng: plannerItinerary.userInput.destination.lng,
+          lat: Number(plannerItinerary.userInput.destination.lat), 
+          lng: Number(plannerItinerary.userInput.destination.lng),
         },
         ...plannerItinerary.places.map((place) => ({
           lat: place.lat,
