@@ -18,7 +18,7 @@ export default function SearchLocation({
   onSelect,
   placeholder = 'Search location...',
 }: SearchLocationProps) {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,65 +61,51 @@ export default function SearchLocation({
     };
 
     setQuery(place.roadAddress);
-    setOpen(false);
+    setIsOpen(false);
     onSelect(selected);
-  };
-
-  const renderContent = () => {
-    if (loading) return <LocationLoadingSkeleton />;
-
-    if (error) {
-      return <div className="text-destructive p-3 text-sm">{error}</div>;
-    }
-
-    if (results.length === 0) {
-      return <NoResultsMessage />;
-    }
-
-    return results.map((place) => (
-      <LocationItem
-        key={`${place.x}-${place.y}`}
-        place={place}
-        onSelect={() => handleLocationSelect(place)}
-      />
-    ));
   };
 
   const handleInputChange = (query: string) => {
     setQuery(query);
-    setOpen(true);
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild contentEditable={false}>
-        <div className="relative w-full">
-          <input
-            type="text"
-            placeholder={placeholder}
-            value={query ?? ''}
-            onChange={(e) => handleInputChange(e.target.value)}
-            className="border-sub-text text-dark-text paragraph-p2-medium focus:border-primary focus:ring-primary w-full rounded-lg border-2 p-3 pl-10 placeholder-[color-mix(in_srgb,var(--color-hover),black_20%)] transition focus:ring-1 focus:outline-none"
-          />
-        </div>
-      </PopoverTrigger>
+    <div className="relative w-full">
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={query}
+        onChange={(e) => handleInputChange(e.target.value)}
+        onFocus={() => query && setIsOpen(true)}
+        className="border-sub-text text-dark-text paragraph-p2-medium focus:border-primary focus:ring-primary w-full rounded-lg border-2 p-3 pl-10 placeholder-[color-mix(in_srgb,var(--color-hover),black_20%)] transition focus:ring-1 focus:outline-none"
+      />
 
-      <PopoverContent
-        align="start"
-        className="bg-background w-full rounded-xl border p-0 shadow-lg"
-        onInteractOutside={(e) => {
-          const target = e.target as HTMLElement;
-          if (!target.closest('input')) {
-            setOpen(false);
-          }
-        }}
-      >
-        <Command className="max-h-64 overflow-y-auto">
-          <CommandGroup heading="Results" className="px-2 py-2">
-            {renderContent()}
-          </CommandGroup>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      {isOpen && (
+        <div className="bg-background absolute top-full right-0 left-0 z-10 mt-2 max-h-64 overflow-y-auto rounded-xl border shadow-lg">
+          {loading && <div className="px-4 py-3 text-center text-sm text-gray-500">Loading...</div>}
+
+          {error && <div className="text-destructive px-4 py-3 text-sm">{error}</div>}
+
+          {!loading && results.length === 0 && !error && (
+            <div className="px-4 py-3 text-center text-sm text-gray-500">No results found</div>
+          )}
+
+          {!loading && results.length > 0 && (
+            <div className="p-2">
+              {results.map((place, id) => (
+                <div
+                  key={id}
+                  onClick={() => handleLocationSelect(place)}
+                  className="cursor-pointer rounded px-3 py-2 transition-colors hover:bg-gray-100"
+                >
+                  <div className="text-sm font-medium">{place.roadAddress}</div>
+                  <div className="text-xs text-gray-500">{place.englishAddress}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
