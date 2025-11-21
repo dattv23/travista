@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import { authService } from './auth.service'
-import { UserModel } from '../user/user.model'
+import { IUser, UserModel } from '../user/user.model'
 import jwt from 'jsonwebtoken'
+import { ObjectId } from 'mongoose'
 
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction) {
@@ -29,13 +30,15 @@ export const authController = {
       return res.redirect(`${frontendUrl}/auth/login?error=google_failed`)
     }
 
+    const user = req.user as IUser & { _id?: ObjectId }
+
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err)
         return res.redirect(`${frontendUrl}/auth/login?error=session_save_failed`)
       }
-
-      res.redirect(frontendUrl)
+      const token = jwt.sign({ id: user!._id, email: user.email }, process.env.JWT_SECRET!)
+      res.redirect(`${frontendUrl}/auth/login?token=${token}`)
     })
   },
 
