@@ -9,10 +9,7 @@ import { parseItinerary } from '@/utils/parseItinerary'
 
 export const plannerService = {
   async getTouristAttractions(state: IItineraryState): Promise<IItineraryState> {
-    logger.info('Fetching tourist attractions...', {
-      lat: state.userInput.destination.lat,
-      lng: state.userInput.destination.lng
-    })
+    logger.info(`Fetching tourist attractions at [Lat: ${state.userInput.destination.lat}, Lng: ${state.userInput.destination.lng}]...`)
 
     try {
       const res = await axios.get('https://dapi.kakao.com/v2/local/search/category.json', {
