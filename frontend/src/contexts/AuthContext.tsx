@@ -1,5 +1,6 @@
 'use client';
 
+import { log } from 'console';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface User {
@@ -115,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         credentials: 'include',
       });
+      localStorage.removeItem('access_token');
     } catch (error) {
       console.error('Log out error:', error);
     } finally {
