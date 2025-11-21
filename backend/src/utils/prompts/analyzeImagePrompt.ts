@@ -10,6 +10,7 @@ Follow this decision logic strictly:
     {
       "nameKR": "Unknown location",
       "nameEN": "Unknown location",
+      "type": "string (Must be exactly 'restaurant' or 'attraction')",
       "description": null,
       "lat": null,
       "lng": null,
@@ -21,6 +22,7 @@ Follow this decision logic strictly:
     {
       "nameKR": "string",
       "nameEN": "string",
+      "type": "string (Must be exactly 'restaurant' or 'attraction')",
       "description": "string (Must be a one-sentence description written in English)",
       "lat": null,
       "lng": null,
@@ -32,6 +34,7 @@ Follow this decision logic strictly:
     {
       "nameKR": "string",
       "nameEN": "string",
+      "type": "string (Must be exactly 'restaurant' or 'attraction')",
       "description": "string (Must be a one-sentence description written in English)",
       "lat": number,
       "lng": number,
