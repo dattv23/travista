@@ -19,6 +19,7 @@ interface PageProps {
   }
 }
 
+
 // SERVER COMPONENT (async)
 export default async function GeneratedPlanPage({ searchParams }: PageProps) {
 

@@ -15,7 +15,7 @@ export const mapperService = {
       logger.info(`Via waypoints: ${waypoints}`)
     }
 
-    const params: any = { 
+    const params: any = {
       start,
       goal,
       option
