@@ -53,15 +53,28 @@ const questions = [
     question: 'What is your budget?',
     icon: <MonetizationOnOutlined />,
     type: 'dropdown',
-    options: ['Option 1', 'Option 2', 'Option 3'],
+    options: [
+      'Economical (~ 75,000 - 90,000 KRW)',
+      'Standard (~ 150,000 - 250,000 KRW)',
+      'Luxury (> 400,000 KRW)',
+    ],
     placeholder: '',
   },
   {
     question: 'What is your theme?',
     icon: <StarBorderOutlined />,
-    type: 'text',
-    options: [],
-    placeholder: 'e.g., “A traditional food tour”',
+    type: 'dropdown',
+    options: [
+      'Cultural & Historical',
+      'Food & Dining',
+      'Shopping & Markets',
+      'Nature & Parks',
+      'Family Friendly',
+      'Nightlife & Entertainment',
+      'Art & Museums',
+      'Traditional Experience',
+    ],
+    placeholder: '',
   },
 ];
 
