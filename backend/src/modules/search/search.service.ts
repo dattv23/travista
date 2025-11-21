@@ -1,8 +1,20 @@
 import { logger } from '@/config/logger'
 import axios from 'axios'
+import NodeCache from 'node-cache'
+
+const searchCache = new NodeCache({ stdTTL: 86400 })
 
 export const searchService = {
   async getAddresses(keyword: string) {
+    const cacheKey = `search:${keyword.trim().toLocaleLowerCase()}`
+
+    const cachedResult = searchCache.get(cacheKey)
+
+    if (cachedResult) {
+      logger.info('Serving search from cache', { keyword })
+      return cachedResult
+    }
+
     logger.info('Fetching addresses...', { keyword })
 
     // Check if API keys are configured
@@ -31,15 +43,21 @@ export const searchService = {
 
       const items = res.data?.addresses || []
 
+      if (items.length > 0) {
+        searchCache.set(cacheKey, items)
+      }
+
       return items
     } catch (error: any) {
       logger.error('Error fetching addresses by keyword:', {
         message: error.message,
-        response: axios.isAxiosError(error) ? {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data
-        } : null,
+        response: axios.isAxiosError(error)
+          ? {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data
+          }
+          : null,
         keyword
       })
       throw error
