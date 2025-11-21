@@ -80,6 +80,7 @@ export default function Login() {
   useEffect(() => {
     if (token) {
       localStorage.setItem('access_token', token);
+      router.push('/');
     }
   }, [token]);
 
