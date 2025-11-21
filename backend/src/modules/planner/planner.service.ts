@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { IKakaoMapsResponse, IItineraryState } from './planner.type'
 import { TravelItinerary } from './planner.model'
+import { RouteCache } from './route-cache.model'
 import { logger } from '@/config/logger'
 import { smartTripPrompt } from '@/utils/prompts'
 import { IUserInput } from './planner.validation'
@@ -56,17 +57,19 @@ export const plannerService = {
       }))
 
       logger.info(`Found ${state.places.length} tourist attractions:`, {
-        places: state.places.map(p => ({ name: p.name, address: p.address }))
+        places: state.places.map((p) => ({ name: p.name, address: p.address }))
       })
       return state
     } catch (error) {
       logger.error('Error fetching tourist attractions:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        response: axios.isAxiosError(error) ? {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data
-        } : null,
+        response: axios.isAxiosError(error)
+          ? {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              data: error.response?.data
+            }
+          : null,
         stack: error instanceof Error ? error.stack : undefined
       })
       throw error
@@ -118,17 +121,19 @@ export const plannerService = {
 
       state.restaurants = restaurants
       logger.info(`Found ${state.restaurants.length} restaurants:`, {
-        restaurants: state.restaurants.slice(0, 5).map(r => ({ name: r.name, address: r.address })) // Log first 5
+        restaurants: state.restaurants.slice(0, 5).map((r) => ({ name: r.name, address: r.address })) // Log first 5
       })
       return state
     } catch (error) {
       logger.error('Error fetching restaurants:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        response: axios.isAxiosError(error) ? {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data
-        } : null,
+        response: axios.isAxiosError(error)
+          ? {
+              status: error.response?.status,
+              statusText: error.response?.statusText,
+              data: error.response?.data
+            }
+          : null,
         stack: error instanceof Error ? error.stack : undefined
       })
       throw error
@@ -142,6 +147,23 @@ export const plannerService = {
         return null
       }
 
+      // parse coordinates
+      const [startLng, startLat] = start.split(',').map((coord) => parseFloat(coord))
+      const [goalLng, goalLat] = goal.split(',').map((coord) => parseFloat(coord))
+
+      const roundedStartLat = Math.round(startLat * 10000) / 10000
+      const roundedStartLng = Math.round(startLng * 10000) / 10000
+      const roundedGoalLat = Math.round(goalLat * 10000) / 10000
+      const roundedGoalLng = Math.round(goalLng * 10000) / 10000
+      const cachedRoute = await RouteCache.findOne({ startLat: roundedStartLat, startLng: roundedStartLng, goalLat: roundedGoalLat, goalLng: roundedGoalLng })
+      if (cachedRoute) {
+        return {
+          distance: cachedRoute.distance,
+          duration: cachedRoute.duration
+        }
+      }
+
+      // get route from API
       const res = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving?option=trafast', {
         params: { start, goal },
         headers: {
@@ -151,12 +173,34 @@ export const plannerService = {
       })
 
       const route = res.data?.route?.trafast?.[0]
-      return route
-        ? {
-            distance: route.summary.distance,
-            duration: route.summary.duration
-          }
-        : null
+      if (route) {
+        const routeData = {
+          distance: route.summary.distance,
+          duration: route.summary.duration
+        }
+
+        RouteCache.findOneAndUpdate(
+          {
+            startLat: roundedStartLat,
+            startLng: roundedStartLng,
+            goalLat: roundedGoalLat,
+            goalLng: roundedGoalLng
+          },
+          {
+            startLat: roundedStartLat,
+            startLng: roundedStartLng,
+            goalLat: roundedGoalLat,
+            goalLng: roundedGoalLng,
+            distance: routeData.distance,
+            duration: routeData.duration
+          },
+          { upsert: true, new: true }
+        ).catch((err) => {
+          logger.warn('Failed to cache route:', err)
+        })
+
+        return routeData
+      }
     } catch (error) {
       if (axios.isAxiosError(error)) {
         logger.warn(`Naver Maps API error for route ${start} → ${goal}:`, {
@@ -168,6 +212,7 @@ export const plannerService = {
       } else {
         logger.warn(`Error calculating route ${start} → ${goal}:`, error)
       }
+
       return null // Return null instead of throwing so the workflow can continue
     }
   },
@@ -175,19 +220,51 @@ export const plannerService = {
   async calculateDistanceToDestinationMatrix(state: IItineraryState): Promise<IItineraryState> {
     logger.info('Calculating distance to destinations (Naver)...')
 
+    if (!process.env.NAVER_MAPS_CLIENT_ID || !process.env.NAVER_MAPS_CLIENT_SECRET) {
+      logger.warn('Naver Maps API keys not configured, skipping distance calculations')
+      state.userDestinationMatrix = state.places.map((place) => ({
+        ...place,
+        distance: 0,
+        duration: 0
+      }))
+      return state
+    }
+
     const start = `${state.userInput.destination.lng},${state.userInput.destination.lat}`
     state.userDestinationMatrix = []
 
-    for (const place of state.places) {
+    // Limit to top 5 places to reduce API calls
+    const limitedPlaces = state.places.slice(0, 5)
+
+    for (const place of limitedPlaces) {
       const goal = `${place.lng},${place.lat}`
       const result = await this.getRoute(start, goal)
-      if (result)
+
+      if (result) {
         state.userDestinationMatrix.push({
           ...place,
           name: place.name,
           ...result
         })
+      } else {
+        // If API fails, still add place with default distance values
+        state.userDestinationMatrix.push({
+          ...place,
+          distance: 0,
+          duration: 0
+        })
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
+
+    state.places.slice(5).forEach((place) => {
+      state.userDestinationMatrix.push({
+        ...place,
+        distance: 0,
+        duration: 0
+      })
+    })
 
     return state
   },
@@ -195,15 +272,31 @@ export const plannerService = {
   async calculateDistanceAmongDestinations(state: IItineraryState): Promise<IItineraryState> {
     logger.info('Calculating inter-destination distance matrix (Naver)...')
 
+    if (!process.env.NAVER_MAPS_CLIENT_ID || !process.env.NAVER_MAPS_CLIENT_SECRET) {
+      logger.warn('Naver Maps API keys not configured, skipping distance matrix')
+      state.destinationMatrix = []
+      return state
+    }
+
     const matrix = []
 
-    for (const origin of state.places) {
+    // Limit to top 5 places to reduce API calls (5 × 4 = 20 calls instead of 90)
+    const limitedPlaces = state.places.slice(0, 5)
+
+    for (const origin of limitedPlaces) {
       const row = []
 
-      for (const destination of state.places) {
+      for (const destination of limitedPlaces) {
         if (origin === destination) continue
+
         const result = await this.getRoute(`${origin.lng},${origin.lat}`, `${destination.lng},${destination.lat}`)
-        if (result) row.push({ to: destination.name, ...result })
+
+        if (result) {
+          row.push({ to: destination.name, ...result })
+        }
+
+        // Add delay to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
 
       matrix.push({ from: origin.name, routes: row })
@@ -216,14 +309,30 @@ export const plannerService = {
   async calculateDistanceFromRestaurants(state: IItineraryState): Promise<IItineraryState> {
     logger.info('Calculating restaurant → destinations matrix (Naver)...')
 
+    if (!process.env.NAVER_MAPS_CLIENT_ID || !process.env.NAVER_MAPS_CLIENT_SECRET) {
+      logger.warn('Naver Maps API keys not configured, skipping restaurant distance matrix')
+      state.restaurantDestinationMatrix = []
+      return state
+    }
+
     const matrix = []
 
-    for (const restaurant of state.restaurants) {
+    // Limit to top 3 restaurants and top 5 places (3 × 5 = 15 calls instead of 100)
+    const limitedRestaurants = state.restaurants.slice(0, 3)
+    const limitedPlaces = state.places.slice(0, 5)
+
+    for (const restaurant of limitedRestaurants) {
       const row = []
 
-      for (const place of state.places) {
+      for (const place of limitedPlaces) {
         const result = await this.getRoute(`${restaurant.lng},${restaurant.lat}`, `${place.lng},${place.lat}`)
-        if (result) row.push({ to: place.name, ...result })
+
+        if (result) {
+          row.push({ to: place.name, ...result })
+        }
+
+        // Add delay to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
 
       matrix.push({ from: restaurant.name, routes: row })
