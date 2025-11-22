@@ -1,4 +1,4 @@
-// 'use client';
+'use client';
 
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
@@ -13,12 +13,15 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
   const [results, setResults] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   // --- Debouncing ---
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
+      setSearchError(null);
+      setIsOpen(false);
       return;
     }
 
@@ -26,17 +29,32 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
     const delayDebounceFn = setTimeout(async () => {
       try {
         setIsLoading(true);
-        console.log('Fetching from API:', query); 
+        setSearchError(null);
+        console.log('🔍 Fetching from API:', query); 
         
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_NODE_API_URL}/api/search/location`, {
-          params: { keyword: query }
+        const apiUrl = process.env.NEXT_PUBLIC_NODE_API_URL || 'http://localhost:5000';
+        const res = await axios.get(`${apiUrl}/api/search/location`, {
+          params: { keyword: query },
+          timeout: 10000
         });
         
-        setResults(res.data.addresses || []);
-        setIsOpen(true);
-      } catch (error) {
-        console.error('Error fetching location', error);
+        console.log('✅ API Response:', res.data);
+        
+        const addresses = res.data?.addresses || [];
+        setResults(addresses);
+        
+        if (addresses.length === 0) {
+          setSearchError(`No results found for "${query}". Try: "인천 월미도" or "Wolmido Incheon"`);
+        } else {
+          setSearchError(null);
+          setIsOpen(true);
+        }
+      } catch (error: any) {
+        console.error('❌ Error fetching location:', error);
+        const errorMessage = error.response?.data?.message || error.message || 'Failed to search location';
+        setSearchError(errorMessage);
         setResults([]);
+        setIsOpen(false);
       } finally {
         setIsLoading(false);
       }
@@ -58,28 +76,37 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
   }, [wrapperRef]);
 
   return (
-    <>
+    <div className="relative w-full" ref={wrapperRef}>
       <input 
         type="text" 
-        className={`text-dark-text paragraph-p2-medium w-full rounded-lg border-2 p-3 pl-10 placeholder-[color-mix(in_srgb,var(--color-hover),black_20%)] transition outline-none 
+        className={`text-dark-text paragraph-p2-medium w-full rounded-lg border-2 p-3 pl-10 pr-10 placeholder-[color-mix(in_srgb,var(--color-hover),black_20%)] transition outline-none 
         focus:ring-1 focus:ring-primary focus:border-primary
-        ${error 
+        ${error || searchError
             ? "border-red-500" 
             : "border-sub-text"
         }`}
-        placeholder="Enter a location"
+        placeholder="Enter a location (e.g., 인천 월미도, Incheon Wolmido)"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setSearchError(null);
+        }}
       />
 
       {isLoading && (
-        <div className="absolute right-3 top-3.5">
+        <div className="absolute right-3 top-3.5 pointer-events-none">
           <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-primary"></div>
         </div>
       )}
 
-      {isOpen && results.length > 0 && (
-        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md bg-card shadow-lg py-1">
+      {searchError && !isLoading && (
+        <div className="absolute z-50 mt-1 w-full rounded-md bg-yellow-50 border border-yellow-200 p-3 shadow-lg">
+          <p className="text-xs text-yellow-800">{searchError}</p>
+        </div>
+      )}
+
+      {isOpen && results.length > 0 && !searchError && (
+        <ul className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md bg-card shadow-lg py-1 border border-gray-200">
           {results.map((item, index) => (
             <li
               key={index}
@@ -93,6 +120,7 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
                 setQuery(locationData.name);
                 setResults([]);
                 setIsOpen(false);
+                setSearchError(null);
                 onSelect(locationData);
               }}
             >
@@ -106,6 +134,6 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
           ))}
         </ul>
       )}
-    </>
+    </div>
   );
 }
