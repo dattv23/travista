@@ -36,20 +36,14 @@ export const searchService = {
         }
       })
 
-      const items = res.data?.addresses || []
-
       logger.info('Naver Geocode API response:', {
         status: res.status,
-        addressCount: items.length,
-        keyword,
-        hasResults: items.length > 0
+        addressCount: res.data?.addresses?.length || 0
       })
 
-      // Log if no results found
-      if (items.length === 0) {
-        logger.warn('No addresses found for keyword', { keyword })
-      } else {
-        // Cache successful results
+      const items = res.data?.addresses || []
+
+      if (items.length > 0) {
         searchCache.set(cacheKey, items)
       }
 
