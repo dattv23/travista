@@ -160,6 +160,12 @@ export const mapperService = {
     }
   },
 
+  // @deprecated Use getSegmentInfo instead
+  async getSegmentDuration(start: string, goal: string): Promise<number | null> {
+    const info = await this.getSegmentInfo(start, goal)
+    return info?.duration ?? null
+  },
+
   // Validate itinerary duration/distance when adding a new stop
   async validateItineraryDuration(
     stopList: string[],

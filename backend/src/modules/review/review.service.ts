@@ -36,12 +36,12 @@ export const reviewService = {
     logger.info('Crawling naver blog text...')
 
     try {
-      const browser = await chromium.launch({ headless: true })
+      const browser = await chromium.launch({ headless: true, args: ['--disable-blink-features=AutomationControlled'] })
       const page = await browser.newPage()
 
       await page.goto(blogUrl, {
-        waitUntil: 'networkidle',
-        timeout: 20000
+        waitUntil: 'domcontentloaded',
+        timeout: 30000
       })
 
       const iframeSrc = await page.evaluate(() => {
@@ -53,8 +53,8 @@ export const reviewService = {
         const iframeUrl = 'https://blog.naver.com' + iframeSrc
 
         await page.goto(iframeUrl, {
-          waitUntil: 'networkidle',
-          timeout: 20000
+          waitUntil: 'domcontentloaded',
+          timeout: 30000
         })
 
         const iframeHtml = await page.content()
@@ -104,69 +104,145 @@ export const reviewService = {
     return response.data.message.result.translatedText
   },
   async summary(data: { locationName: string }) {
-    // Placeholder implementation for generating a summary
-    const linkBlogs = await this.getLinkBlogs(data.locationName)
-    const rawBlogContents = await Promise.all(
-      linkBlogs.map(async (blog: { link: string }) => {
-        const content = await this.getNaverBlogText(blog.link)
-        return cleanText(content)
-      })
-    )
-
-    const MIN_LENGTH = 300
-    const blogContents = rawBlogContents.filter((text) => text && text.length >= MIN_LENGTH)
-
-    if (blogContents.length === 0) {
-      logger.warn(`No blog content met the minimum length of ${MIN_LENGTH} characters.`)
-
-      const locationEN = await this.translateToEnglish(data.locationName).catch(() => data.locationName)
-
-      return {
-        locationKR: data.locationName,
-        locationEN: locationEN,
-        summaryKR: '정보가 부족하여 요약을 생성할 수 없습니다.',
-        summaryEN: 'Insufficient information to generate a summary based on available blogs.',
-        sources: linkBlogs
-      }
-    }
-
-    logger.info('Generating summary...')
     try {
-      const response = await axios.post(
-        `https://clovastudio.stream.ntruss.com/v1/api-tools/summarization/v2`,
+      // Step 1: Get link blogs
+      const linkBlogs = await this.getLinkBlogs(data.locationName)
+
+      if (linkBlogs.length === 0) {
+        logger.warn('No blog links found for location:', data.locationName)
+        const locationEN = await this.translateToEnglish(data.locationName).catch(() => data.locationName)
+
+        return {
+          locationKR: data.locationName,
+          locationEN: locationEN,
+          summaryKR: '정보가 부족하여 요약을 생성할 수 없습니다.',
+          summaryEN: 'Insufficient information to generate a summary based on available blogs.',
+          sources: linkBlogs
+        }
+      }
+
+      // Step 2: Get blog text & Step 3: Summarize each blog individually
+      logger.info('Fetching and summarizing individual blogs...')
+      const individualSummaries: Array<{ link: string; summary: string }> = []
+
+      const MIN_LENGTH = 300
+      for (const blog of linkBlogs) {
+        try {
+          const content = await this.getNaverBlogText(blog.link)
+          const cleanedContent = cleanText(content)
+
+          if (cleanedContent && cleanedContent.length >= MIN_LENGTH) {
+            // Summarize each blog individually
+            const response = await axios.post(
+              `https://clovastudio.stream.ntruss.com/v1/api-tools/summarization/v2`,
+              {
+                texts: [cleanedContent],
+                autoSentenceSplitter: true,
+                segCount: -1,
+                segMaxSize: 1000,
+                segMinSize: 300,
+                includeAiFilters: false
+              },
+              {
+                headers: {
+                  Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
+                  'Content-Type': 'application/json'
+                }
+              }
+            )
+
+            const blogSummary = response.data.result.text
+            individualSummaries.push({
+              link: blog.link,
+              summary: blogSummary
+            })
+          }
+        } catch (error) {
+          logger.warn(`Failed to process blog: ${blog.link}`, error)
+          continue
+        }
+      }
+
+      if (individualSummaries.length === 0) {
+        logger.warn(`No blog content met the minimum length of ${MIN_LENGTH} characters.`)
+        const locationEN = await this.translateToEnglish(data.locationName).catch(() => data.locationName)
+
+        return {
+          locationKR: data.locationName,
+          locationEN: locationEN,
+          summaryKR: '정보가 부족하여 요약을 생성할 수 없습니다.',
+          summaryEN: 'Insufficient information to generate a summary based on available blogs.',
+          sources: linkBlogs
+        }
+      }
+
+      logger.info('Generating final consolidated summary...')
+
+      const combinedSummariesText = individualSummaries.map((item) => `[출처: ${item.link}]\n${item.summary}`).join('\n\n---\n\n')
+
+      const finalSummaryPrompt = `다음은 여러 블로그에서 추출한 요약본들입니다. 이들을 분석하여 해당 장소에 대한 최종 요약을 작성해주세요.
+
+요구사항:
+- 최대 5개의 핵심 포인트로 정리
+- 각 포인트는 간결하게 (1-2문장)
+- 각 포인트마다 출처(블로그 링크)를 명시
+- 중복되는 내용은 통합
+- 가장 유용하고 중요한 정보를 우선순위
+
+블로그 요약본들:
+${combinedSummariesText}
+
+다음 텍스트 형식으로만 답변하세요 (JSON이나 마크다운 코드블록 없이):
+
+• [첫 번째 핵심 포인트]
+  출처: [링크1], [링크2]
+
+• [두 번째 핵심 포인트]
+  출처: [링크]
+
+(최대 5개까지)`
+
+      const chatResponse = await axios.post(
+        `https://clovastudio.stream.ntruss.com/v1/chat-completions/HCX-003`,
         {
-          texts: blogContents,
-          autoSentenceSplitter: true,
-          segCount: -1,
-          segMaxSize: 1000,
-          segMinSize: 300,
-          includeAiFilters: false
+          messages: [
+            {
+              role: 'user',
+              content: finalSummaryPrompt
+            }
+          ],
+          temperature: 0.8,
+          topP: 0.8,
+          maxTokens: 1024
         },
         {
           headers: {
-            // 'X-NCP-CLOVASTUDIO-API-KEY': process.env.NAVER_CLOVA_API_KEY!,
-            // 'X-NCP-CLOVASTUDIO-API-SECRET': process.env.NAVER_CLOVA_API_SECRET!,
-            // 'X-NCP-CLOVASTUDIO-PROJECT-ID': process.env.NAVER_CLOVA_PROJECT_ID!,
             Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
             'Content-Type': 'application/json'
           }
         }
       )
 
-      const summaryKR = response.data.result.text
+      const summaryKR = chatResponse.data.result.message.content
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim()
 
       // Translate to English
       const summaryEN = await this.translateToEnglish(summaryKR)
       const locationEN = await this.translateToEnglish(data.locationName)
+
       return {
         locationKR: data.locationName,
         locationEN: locationEN,
         summaryKR: summaryKR,
         summaryEN: summaryEN,
-        sources: linkBlogs
+        sources: linkBlogs,
+        individualSummaries: individualSummaries
       }
     } catch (error) {
       logger.error('Error generating summary:', error)
+      throw error
     }
   }
 }

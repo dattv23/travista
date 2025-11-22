@@ -3,10 +3,7 @@ import { logger } from '@/config/logger'
 import { mapperService } from './mapper.service'
 
 export const mapperController = {
-  /**
-   * GET /get-directions?start=lng,lat&goal=lng,lat&waypoints=lng,lat|lng,lat&option=trafast
-   * Simple 2-point route or route with waypoints
-   */
+  // GET /get-directions?start=lng,lat&goal=lng,lat&waypoints=lng,lat|lng,lat
   async getDirections(req: Request, res: Response) {
     try {
       const start = req.query.start as string
@@ -44,11 +41,7 @@ export const mapperController = {
     }
   },
 
-  /**
-   * POST /draw-route
-   * Body: { locations: ["lng,lat", "lng,lat", ...] }
-   * Max 7 locations (start + 5 waypoints + goal)
-   */
+  // POST /draw-route - Body: { locations: ["lng,lat", ...] } (max 7)
   async drawRoute(req: Request, res: Response) {
     try {
       const { locations } = req.body
@@ -77,7 +70,6 @@ export const mapperController = {
         })
       }
 
-      // Extract route data for drawing
       const routeKey = Object.keys(result.route)[0]
       const route = result.route[routeKey][0]
 
@@ -136,18 +128,7 @@ export const mapperController = {
     }
   },
 
-  /**
-   * POST /mapper/validate-itinerary-duration
-   * Validate itinerary duration/distance when adding a new stop
-   * Body: {
-   *   stopList: ["lng,lat", "lng,lat", ...],
-   *   newStop: "lng,lat",
-   *   insertAfterIndex: 0,
-   *   maxDurationHours: 12,
-   *   existingSegmentDurations?: [minutes, ...],
-   *   existingSegmentDistances?: [meters, ...]
-   * }
-   */
+  // POST /validate-itinerary-duration - Validate duration/distance when adding new stop
   async validateItineraryDuration(req: Request, res: Response) {
     try {
       const { 
