@@ -106,12 +106,30 @@ export const reviewService = {
   async summary(data: { locationName: string }) {
     // Placeholder implementation for generating a summary
     const linkBlogs = await this.getLinkBlogs(data.locationName)
-    const blogContents = await Promise.all(
+    const rawBlogContents = await Promise.all(
       linkBlogs.map(async (blog: { link: string }) => {
         const content = await this.getNaverBlogText(blog.link)
         return cleanText(content)
       })
     )
+
+    const MIN_LENGTH = 300
+    const blogContents = rawBlogContents.filter((text) => text && text.length >= MIN_LENGTH)
+
+    if (blogContents.length === 0) {
+      logger.warn(`No blog content met the minimum length of ${MIN_LENGTH} characters.`)
+
+      const locationEN = await this.translateToEnglish(data.locationName).catch(() => data.locationName)
+
+      return {
+        locationKR: data.locationName,
+        locationEN: locationEN,
+        summaryKR: '정보가 부족하여 요약을 생성할 수 없습니다.',
+        summaryEN: 'Insufficient information to generate a summary based on available blogs.',
+        sources: linkBlogs
+      }
+    }
+
     logger.info('Generating summary...')
     try {
       const response = await axios.post(

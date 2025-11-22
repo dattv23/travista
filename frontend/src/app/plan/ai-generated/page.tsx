@@ -1,34 +1,55 @@
-import PlanUI from './plan'; 
+import PlanUI from './plan';
 
-// === TEST DATA ===
-const MY_ITINERARY = [
-  { lat: 37.5665, lng: 126.9780 }, // 1. City Hall
-  { lat: 37.5796, lng: 126.9770 }, // 2. Gyeongbok Palace
-  { lat: 37.5512, lng: 126.9882 }, // 3. Myeongdong
-];
-
-// Định nghĩa kiểu cho props của trang
 interface PageProps {
-  searchParams: {
-    location: string;
-    date: string;
-    duration: string;
-    people: string;
-    budget: string;
-    theme: string;
-  }
+  searchParams: Promise<{
+    location?: string;
+    lat?: string;
+    lng?: string;
+    date?: string;
+    duration?: string;
+    people?: string;
+    budget?: string;
+    theme?: string;
+  }>;
 }
 
-
-// SERVER COMPONENT (async)
 export default async function GeneratedPlanPage({ searchParams }: PageProps) {
+  const params = await searchParams;
 
-  const initialItinerary = MY_ITINERARY;
+  const lat = params.lat ? parseFloat(params.lat) : null;
+  const lng = params.lng ? parseFloat(params.lng) : null;
 
-  return (
-    <PlanUI 
-      searchParams={searchParams} 
-      initialItinerary={initialItinerary} 
-    />
-  );
+  console.log('📥 GeneratedPlanPage received:', {
+    location: params.location,
+    lat,
+    lng,
+  });
+
+  const initialItinerary =
+    lat && lng && !isNaN(lat) && !isNaN(lng)
+      ? [{ lat, lng }]
+      : [
+          {
+            // Default fallback (Seoul City Hall) if coords are missing
+            lat: 37.5665,
+            lng: 126.978,
+          },
+        ];
+
+  const cleanParams = {
+    location: params.location || '',
+    lat: params.lat,
+    lng: params.lng,
+    date: params.date || '',
+    duration: params.duration || '',
+    people: params.people || '',
+    budget: params.budget || '',
+    theme: params.theme || '',
+  };
+
+  console.log('🗺️ Initial Itinerary:', initialItinerary);
+
+  // return <></>
+
+  return <PlanUI searchParams={cleanParams} initialItinerary={initialItinerary} />;
 }

@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { useState, Fragment, useEffect } from 'react';
 import { Transition } from '@headlessui/react';
-import Link from 'next/link';
 
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -18,7 +17,8 @@ import {
   KeyboardArrowDownOutlined,
   KeyboardArrowUpOutlined,
 } from '@mui/icons-material';
-import SearchLocation from '@/components/shared/SearchLocation';
+import SearchLocationInput from '@/components/ui/searchLocationInput';
+import { useRouter } from 'next/navigation';
 
 const questions = [
   {
@@ -53,38 +53,67 @@ const questions = [
     question: 'What is your budget?',
     icon: <MonetizationOnOutlined />,
     type: 'dropdown',
-    options: ['Option 1', 'Option 2', 'Option 3'],
+    options: [
+      'Economical (~ 75,000 - 90,000 KRW)',
+      'Standard (~ 150,000 - 250,000 KRW)',
+      'Luxury (> 400,000 KRW)',
+    ],
     placeholder: '',
   },
   {
     question: 'What is your theme?',
     icon: <StarBorderOutlined />,
-    type: 'text',
-    options: [],
-    placeholder: 'e.g., “A traditional food tour”',
+    type: 'dropdown',
+    options: [
+      'Cultural & Historical',
+      'Food & Dining',
+      'Shopping & Markets',
+      'Nature & Parks',
+      'Family Friendly',
+      'Nightlife & Entertainment',
+      'Art & Museums',
+      'Traditional Experience',
+    ],
+    placeholder: '',
   },
 ];
 
+const formatDateToLocalISO = (date: Date): string => {
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60 * 1000);
+  return localDate.toISOString().split('T')[0];
+};
+
 export default function Plan() {
+  const router = useRouter();
   const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
+  const [locationError, setLocationError] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    name: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+
   const [answers, setAnswers] = useState<{ [key: number]: string }>(() => {
-    return questions.reduce(
-      (acc, question, index) => {
-        if (question.type === 'dropdown') {
-          acc[index] = question.options[0] || '';
-        } else {
-          acc[index] = '';
-        }
-        return acc;
-      },
-      {} as { [key: number]: string },
-    );
+    const initialAnswers: { [key: number]: string } = {};
+
+    questions.forEach((question, index) => {
+      if (question.type === 'dropdown') {
+        initialAnswers[index] = question.options[0] || '';
+      } else if (question.type === 'calendar') {
+        const today = new Date();
+        initialAnswers[index] = today.toLocaleDateString('en-GB');
+      } else {
+        initialAnswers[index] = '';
+      }
+    });
+    return initialAnswers;
   });
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
-    console.log(answers);
-  }, [answers]);
+    console.log({ answers, selectedLocation });
+  }, [answers, selectedLocation]);
 
   const toggleOptionsDropdown = (index: number) => {
     setOpenDropdownIndex((prevIndex) => (prevIndex === index ? null : index));
@@ -101,7 +130,7 @@ export default function Plan() {
   const handleDateChange = (date: Date | null, questionIndex: number) => {
     setSelectedDate(date);
 
-    const dateString = date ? date.toLocaleDateString('en-GB') : '';
+    const dateString = date ? date.toISOString().split('T')[0] : '';
 
     setAnswers((prevAnswers) => ({
       ...prevAnswers,
@@ -117,7 +146,41 @@ export default function Plan() {
   };
 
   const handleLocationSelect = (location: { name: string; lat: number; lng: number }) => {
-    console.log('Selected Location:', location);
+    console.log('📍 Location selected:', location);
+    setSelectedLocation(location);
+    setLocationError(false);
+    setAnswers((prevAnswers) => ({
+      ...prevAnswers,
+      0: location.name,
+    }));
+  };
+
+  const handleGenerateClick = () => {
+    if (!selectedLocation) {
+      setLocationError(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Get number of days (in number)
+    const durationString = answers[2] || '';
+    const durationMatch = durationString.match(/\d+/);
+    const numberOfDays = durationMatch ? durationMatch[0] : '1';
+
+    const queryParams = new URLSearchParams({
+      location: answers[0] || '',
+      lat: selectedLocation.lat.toString(),
+      lng: selectedLocation.lng.toString(),
+      date: answers[1] || '',
+      duration: numberOfDays,
+      people: answers[3] || '',
+      budget: answers[4] || '',
+      theme: answers[5] || '',
+    });
+
+    console.log('🔗 Generating with:', Object.fromEntries(queryParams.entries()));
+
+    router.push(`plan/ai-generated?${queryParams.toString()}`);
   };
 
   return (
@@ -157,7 +220,7 @@ export default function Plan() {
 
                     {/* Input / Dropdown Button*/}
                     <div className="relative w-full">
-                      <div className="text-sub-text pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <div className="text-sub-text pointer-events-none absolute top-0 left-0 flex h-12 items-center pl-3">
                         {question.icon}
                       </div>
 
@@ -179,7 +242,17 @@ export default function Plan() {
                           className="border-sub-text text-dark-text paragraph-p2-medium focus:border-primary focus:ring-primary w-full rounded-lg border-2 p-3 pl-10 placeholder-[color-mix(in_srgb,var(--color-hover),black_20%)] transition focus:ring-1 focus:outline-none"
                         />
                       ) : question.type === 'search' ? (
-                        <SearchLocation onSelect={handleLocationSelect} />
+                        <>
+                          <SearchLocationInput
+                            onSelect={handleLocationSelect}
+                            error={locationError}
+                          />
+                          {locationError && (
+                            <p className="mt-2 ml-1 text-xs text-red-500">
+                              * Please select a destination to continue.
+                            </p>
+                          )}
+                        </>
                       ) : (
                         <>
                           <button
@@ -228,12 +301,12 @@ export default function Plan() {
                 </div>
               ))}
             </div>
-            <Link
-              href={`/plan/ai-generated?location=${encodeURIComponent(answers[0] || '')}&date=${encodeURIComponent(answers[1] || '')}&duration=${encodeURIComponent(answers[2] || '')}&people=${encodeURIComponent(answers[3] || '')}&budget=${encodeURIComponent(answers[4] || '')}&theme=${encodeURIComponent(answers[5] || '')}`}
-              className="inline-box paragraph-p2-medium text-light-text bg-secondary mb-12 ml-[74px] max-w-max rounded-[8px] px-[25px] py-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)]"
+            <button
+              onClick={handleGenerateClick}
+              className="inline-box paragraph-p2-medium text-light-text bg-secondary mb-12 ml-[74px] max-w-max cursor-pointer rounded-[8px] px-[25px] py-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)]"
             >
               Generate
-            </Link>
+            </button>
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from "react";
+import { useState, Fragment, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from 'next/navigation';
@@ -20,12 +20,19 @@ const languages = [{ title: "English", code: "EN" }];
 export default function Header() {
 
   const { userLoggedIn, isLoading, logout, user } = useAuth();
+  const [isMounted, setIsMounted] = useState(false);
 
   const [language, setLanguage] = useState(languages[0].code);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const isAuthenticated = isMounted && userLoggedIn;
 
   const getDisplayName = () => {
     const fullName = user?.name || "User";
@@ -62,7 +69,7 @@ export default function Header() {
           {navLinks.map((nav, index) => {
             const isActive = pathname === nav.path;
             const isProtected = nav.path === '/plan';
-            const path = (isProtected && !userLoggedIn) ? '/auth/login' : nav.path;
+            const path = (isProtected && !isAuthenticated) ? '/auth/login' : nav.path;
             return(
               <Link key={index} href={path} className={`relative group ${isActive && 'text-primary'}`}>
                 {nav.title}
@@ -104,7 +111,7 @@ export default function Header() {
             ))}
           </Dropdown>
           
-          {userLoggedIn ? (
+          {isAuthenticated ? (
             <Dropdown
               isOpen={openDropdown === 'user'}
               widthClass="w-full" 

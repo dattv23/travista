@@ -17,6 +17,20 @@ export interface IItineraryDocument extends Document {
   itinerary: string
   createdAt: Date
   updatedAt: Date
+  routeData?: {
+    summary: {
+      distance: string
+      duration: string
+      taxiFare: number
+    }
+    sections: Array<{
+      start: { lat: number; lng: number }
+      end: { lat: number; lng: number }
+      distanceText: string
+      durationMinutes: number
+    }>
+    path: number[][] // Coordinates to draw map
+  }
 }
 
 const itinerarySchema = new Schema<IItineraryDocument>(
@@ -92,6 +106,22 @@ const itinerarySchema = new Schema<IItineraryDocument>(
     itinerary: {
       type: String,
       required: true
+    },
+    routeData: {
+      summary: {
+        distance: String,
+        duration: String,
+        taxiFare: Number
+      },
+      sections: [
+        {
+          start: { lat: Number, lng: Number },
+          end: { lat: Number, lng: Number },
+          distanceText: String,
+          durationMinutes: Number
+        }
+      ],
+      path: [[Number]] // Mảng 2 chiều
     }
   },
   { timestamps: true }

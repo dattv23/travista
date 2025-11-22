@@ -1,129 +1,268 @@
-"use client";
+'use client';
 
 import { ArrowCircleLeft } from '@mui/icons-material';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AddModal } from '@/components/ui/addModal';
 import PlanCard from '@/components/ui/planCard';
 import { useModal } from '@/hooks/useModal';
 import { SummaryModal } from '@/components/ui/summaryModal';
 import { ReviewSummaryData } from '@/types/review';
+import { usePlanner } from '@/hooks/usePlanner';
+import {
+  AIItineraryResult,
+  DayPlan,
+  PlannerRequest,
+  RouteData,
+  TimelineItem,
+} from '@/types/planner';
+import { MapBounds, MapCenterState, MapPoint } from '@/types/map';
 
-interface MapPoint {
-  lat: number,
-  lng: number,
-}
 
 interface PlanClientUIProps {
   searchParams: {
     location: string;
+    lat?: string;
+    lng?: string;
     date: string;
     duration: string;
     people: string;
     budget: string;
     theme: string;
   };
-  initialItinerary: MapPoint[]; 
+  initialItinerary: MapPoint[];
 }
 
-const mockPlanData = [
-  {
-    type: "location",
-    name: "Hongik University (Hongdae)",
-    duration: "09:00 - 13:00",
-    estTime: "4 hours",
-    summary: "The heart of indie music, street art, and fashion. Perfect for finding unique clothes and watching busking.",
-    numberOfStops: null,
-  },
-  {
-    type: "bus",
-    name: "Bus 273",
-    duration: "13:00 - 13:20",
-    estTime: "20 mins",
-    summary: "",
-    numberOfStops: 4,
-  },
-  {
-    type: "location",
-    name: "Yeonnam-dong Park", 
-    duration: "13:20 - 15:20",
-    estTime: "1 hour",
-    summary: "A trendy neighborhood known for its cafe culture and the Gyeongui Line Forest Park.",
-    numberOfStops: null,
-  },
-  {
-    type: "subway",
-    name: "Subway Line 2",
-    duration: "15:20 - 15:50",
-    estTime: "30 mins",
-    summary: "",
-    numberOfStops: 4,
-  },
-  {
-    type: "location",
-    name: "The Hyundai Seoul",
-    duration: "16:00 - 19:00",
-    estTime: "3 hours",
-    summary: "Seoul's largest department store, featuring an indoor garden and contemporary architecture.",
-    numberOfStops: null,
-  },
-  {
-    type: "location",
-    name: "Hongik University (Hongdae)",
-    duration: "09:00 - 13:00",
-    estTime: "4 hours",
-    summary: "The heart of indie music, street art, and fashion. Perfect for finding unique clothes and watching busking.",
-    numberOfStops: null,
-  },
-  {
-    type: "bus",
-    name: "Bus 273",
-    duration: "13:00 - 13:20",
-    estTime: "20 mins",
-    summary: "",
-    numberOfStops: 4,
-  },
-  {
-    type: "location",
-    name: "Yeonnam-dong Park", 
-    duration: "13:20 - 15:20",
-    estTime: "1 hour",
-    summary: "A trendy neighborhood known for its cafe culture and the Gyeongui Line Forest Park.",
-    numberOfStops: null,
-  },
-  {
-    type: "subway",
-    name: "Subway Line 2",
-    duration: "15:20 - 15:50",
-    estTime: "30 mins",
-    summary: "",
-    numberOfStops: 4,
-  },
-  {
-    type: "location",
-    name: "The Hyundai Seoul",
-    duration: "16:00 - 19:00",
-    estTime: "3 hours",
-    summary: "Seoul's largest department store, featuring an indoor garden and contemporary architecture.",
-    numberOfStops: null,
-  },
-];
+interface RouteSummary {
+  distance: string;
+  duration: string;
+  taxiFare: number;
+}
 
-const DynamicNaverMap = dynamic(
-  () => import('@/components/map/NaverMap'),
-  {
-    ssr: false,
-    loading: () => <div style={{width: '100%', height: '100%', background: '#eee'}} />
-  }
-)
+const DynamicNaverMap = dynamic(() => import('@/components/map/NaverMap'), {
+  ssr: false,
+  loading: () => <div style={{ width: '100%', height: '100%', background: '#eee' }} />,
+});
+
+const timeToMinutes = (timeStr: string): number => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
 
 export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIProps) {
-
+  const { isLoading, error, itinerary: plannerItinerary, pins, createItinerary } = usePlanner();
   const addModal = useModal();
   const summaryModal = useModal();
 
   const [itinerary, setItinerary] = useState(initialItinerary);
+  const [parsedData, setParsedData] = useState<AIItineraryResult | null>(null);
+  const [routePath, setRoutePath] = useState<number[][]>([]);
+  const [routeSummary, setRouteSummary] = useState<RouteSummary | null>(null);
+  const [mapCenterState, setMapCenterState] = useState<MapCenterState | undefined>(undefined);
+  const [initialMapBounds, setInitialMapBounds] = useState<MapBounds | undefined>(undefined);
+  const [activeSegmentPath, setActiveSegmentPath] = useState<number[][] | undefined>(undefined);
+  const [focusBounds, setFocusBounds] = useState<MapBounds | undefined>(undefined);
+
+  // Prevent double fetching
+  const hasInitiatedRef = useRef(false);
+
+  const generatePlan = useCallback(() => {
+    if (!initialItinerary.length || !initialItinerary[0].lat || !initialItinerary[0].lng) {
+      console.error('Missing coordinates for itinerary generation');
+      return;
+    }
+
+    const lat = initialItinerary[0].lat;
+    const lng = initialItinerary[0].lng;
+
+    console.log('Triggering AI Planner:', { lat, lng });
+
+    let startDate = searchParams.date;
+    if (startDate.includes('/')) {
+      const [day, month, year] = startDate.split('/');
+      startDate = `${year}-${month}-${day}`;
+    }
+
+    const request: PlannerRequest = {
+      destination: { lat: lat, lng: lng },
+      startDate: startDate,
+      numberOfDays: parseInt(searchParams.duration?.match(/(\d+)/)?.[1] || '1'),
+      people: searchParams.people,
+      budget: searchParams.budget,
+      theme: searchParams.theme,
+    };
+
+    console.log('Request: ', request);
+
+    createItinerary(request)
+      .then(() => console.log('AI Itinerary Generated Successfully'))
+      .catch((err) => console.error('AI Generation Failed:', err));
+  }, [initialItinerary, searchParams, createItinerary]);
+
+  // console.log('Planner Itinerary: ', plannerItinerary?.itinerary);
+
+  useEffect(() => {
+    if (!hasInitiatedRef.current) {
+      hasInitiatedRef.current = true;
+      generatePlan();
+    }
+  }, [generatePlan]);
+
+  // --- 2. Process Data & Inject Logic ---
+  useEffect(() => {
+    if (plannerItinerary && plannerItinerary.itinerary) {
+      try {
+        const result: AIItineraryResult = JSON.parse(plannerItinerary.itinerary);
+        const backendRouteData = (plannerItinerary as any).routeData as RouteData | undefined;
+        const allReferencePlaces = [
+          ...(plannerItinerary.places || []),
+          ...(plannerItinerary.restaurants || []),
+        ];
+        const mapPoints: MapPoint[] = [];
+
+        let finalTimelineData: TimelineItem[] = [];
+
+        result.days.forEach((day) => {
+          day.timeline.forEach((item, idx) => {
+            const locationItem: TimelineItem = {
+              ...item,
+              uniqueId: `loc-${day.day_index}-${idx}`,
+            };
+
+            let finalLat = locationItem.lat;
+            let finalLng = locationItem.lng;
+            if (!finalLat || !finalLng) {
+              const found = allReferencePlaces.find(
+                (p) =>
+                  p.name === item.nameEN ||
+                  p.name.includes(item.nameEN) ||
+                  (item.nameKR && p.name.includes(item.nameKR || '')),
+              );
+              if (found) {
+                finalLat = found.lat;
+                finalLng = found.lng;
+              }
+            }
+            locationItem.lat = finalLat || null;
+            locationItem.lng = finalLng || null;
+            if (finalLat && finalLng) mapPoints.push({ lat: finalLat, lng: finalLng });
+            finalTimelineData.push(locationItem);
+          });
+        });
+
+        let globalRouteIndex = 0;
+        const finalEnrichedTimeline: TimelineItem[] = [];
+
+        for (let idx = 0; idx < finalTimelineData.length; idx++) {
+          const item = finalTimelineData[idx];
+          finalEnrichedTimeline.push(item);
+
+          if (idx < finalTimelineData.length - 1) {
+            const nextItem = finalTimelineData[idx + 1];
+
+            const driveStartTime = item.end_time;
+            const driveEndTime = nextItem.start_time;
+
+            const durationMins = timeToMinutes(driveEndTime) - timeToMinutes(driveStartTime);
+
+            console.log('Duration: ', durationMins);
+
+            let sectionPath: number[][] | undefined = undefined;
+            let driveDistance = '';
+
+            const isValidRouteLeg = item.lat && item.lng && nextItem.lat && nextItem.lng;
+
+            if (isValidRouteLeg) {
+              if (
+                backendRouteData &&
+                backendRouteData.sections &&
+                backendRouteData.sections[globalRouteIndex]
+              ) {
+                const section = backendRouteData.sections[globalRouteIndex];
+                
+                driveDistance = section.distanceText;
+                if ((section as any).path) {
+                    sectionPath = (section as any).path;
+                }
+              }
+              globalRouteIndex++;
+            }
+
+            finalEnrichedTimeline.push({
+              index: -1,
+              nameEN: 'Driving',
+              type: 'car',
+              start_time: driveStartTime,
+              end_time: driveEndTime,
+              duration_minutes: durationMins,
+              lat: null,
+              lng: null,
+              note: driveDistance ? `Distance: ${driveDistance}` : 'Estimated travel time',
+              uniqueId: `car-${item.uniqueId}`,
+              startCoords: { lat: item.lat, lng: item.lng },
+              endCoords: { lat: nextItem.lat, lng: nextItem.lng },
+              sectionPath: sectionPath
+            } as any);
+          }
+        }
+
+        let currentDayIndex = -1;
+        const finalParsedDays: DayPlan[] = [];
+
+        finalEnrichedTimeline.forEach((item) => {
+          const dayIndex = Number(item.uniqueId?.split('-')[1]);
+
+          if (dayIndex !== currentDayIndex) {
+            currentDayIndex = dayIndex;
+            const originalDay = result.days.find((d: any) => d.day_index === dayIndex);
+            if (originalDay) {
+              finalParsedDays.push({ ...originalDay, timeline: [] });
+            }
+          }
+          if (finalParsedDays.length > 0) {
+            finalParsedDays[finalParsedDays.length - 1].timeline.push(item);
+          }
+        });
+
+        setParsedData({ days: finalParsedDays });
+        setItinerary(mapPoints);
+
+        if (backendRouteData) {
+          setRoutePath(backendRouteData.path);
+          setRouteSummary(backendRouteData.summary);
+        }
+
+        if (
+          backendRouteData && 
+          backendRouteData.path.length > 0 && 
+          typeof window !== 'undefined' && 
+          window.naver 
+        ) {
+          const pathLatLngs = backendRouteData.path.map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng));
+          
+          const markerLatLngs = mapPoints.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
+          const allPoints = [...pathLatLngs, ...markerLatLngs];
+
+          if (allPoints.length > 0) {
+            const bounds = new window.naver.maps.LatLngBounds(allPoints[0], allPoints[0]);
+            allPoints.forEach(pt => bounds.extend(pt));
+            setInitialMapBounds({ 
+              latLngBounds: bounds, 
+              padding: 100 
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse itinerary', e);
+      }
+    }
+  }, [plannerItinerary]);
+
+  const handleRetry = () => {
+    console.log('Retrying generation...');
+    generatePlan();
+  };
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
   const [summaryData, setSummaryData] = useState<ReviewSummaryData | null>(null);
 
@@ -137,17 +276,23 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ locationName }), 
+        body: JSON.stringify({ locationName }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to fetch summary');
       }
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text) {
+        console.warn("Server returned empty response for summary");
+        return; 
+      }
+
+      const data = JSON.parse(text);
       setSummaryData(data);
     } catch (error) {
-      console.error("Error fetching summary:", error);
+      console.error('Error fetching summary:', error);
     } finally {
       setIsLoadingSummary(false);
     }
@@ -155,49 +300,58 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
   const handleAddNewStop = (newStop: MapPoint) => {
     setItinerary([...itinerary, newStop]);
-  }
+  };
+
+  const handlePlanCardClick = (lat: number, lng: number, name: string) => {
+    console.log(name, lat, lng)
+    setMapCenterState({ lat, lng, zoom: 20 }); 
+    summaryModal.open();
+    if (name) {
+      handleGetSummary(name);
+    }
+  };
 
   return (
     <>
-      <section className="w-full min-h-screen pt-[92px] flex ">
+      <section className="flex min-h-screen w-full pt-[92px]">
         {/* left section */}
-        <div className='w-1/3 bgb-transparent shadow-xl px-[18px] h-screen flex flex-col'>
-          <div className='pt-4'>
+        <div className="bgb-transparent flex h-screen w-1/3 flex-col px-[18px] shadow-xl">
+          <div className="pt-4">
             {/* Title */}
             <div>
               {/* buttons */}
-              <div className='mb-4'>
-                <Link 
-                  href={''} 
-                  className='flex items-center justify-center max-w-max text-primary p-2 rounded-full transition hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)] hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]'
+              <div className="mb-4">
+                <Link
+                  href={''}
+                  className="text-primary flex max-w-max items-center justify-center rounded-full p-2 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)] hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)]"
                 >
                   <ArrowCircleLeft />
                 </Link>
               </div>
               <p className="paragraph-p1-semibold text-dark-text">Your Itinerary</p>
             </div>
-            <div className='flex items-start pt-2 gap-6'>
-              <div className='flex flex-col gap-2'>
+            <div className="flex items-start gap-6 pt-2">
+              <div className="flex flex-col gap-2">
                 <p className="paragraph-p3-medium text-dark-text">{searchParams.theme} itinerary</p>
                 <p className="paragraph-p3-medium text-sub-text">Start date: {searchParams.date}</p>
                 <p className="paragraph-p3-medium text-sub-text">Est. 15 hours (5 locations)</p>
               </div>
-              <div className='flex flex-col gap-2'>
+              <div className="flex flex-col gap-2">
                 <p className="paragraph-p3-medium text-sub-text">{searchParams.people}</p>
-                <p className="paragraph-p3-medium text-sub-text">Duration: {searchParams.duration}</p>
+                <p className="paragraph-p3-medium text-sub-text">
+                  Duration: {searchParams.duration}
+                </p>
                 <p className="paragraph-p3-medium text-sub-text">Budget: {searchParams.budget}</p>
               </div>
             </div>
-            <div className='flex justify-between mt-5'>
+            <div className="mt-5 flex justify-between">
               <button></button>
-              <div className='paragraph-p3-medium flex gap-5'>
-                <button
-                  className='bg-transparent text-primary p-2.5 border-2 border-primary rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]'
-                >
+              <div className="paragraph-p3-medium flex gap-5">
+                <button className="text-primary border-primary cursor-pointer rounded-[8px] border-2 bg-transparent p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]">
                   Edit plan
                 </button>
                 <button
-                  className='bg-primary text-light-text p-2.5 border-2 border-primary rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]'
+                  className="bg-primary text-light-text border-primary cursor-pointer rounded-[8px] border-2 p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
                   onClick={addModal.open}
                 >
                   Add new stop
@@ -205,55 +359,82 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               </div>
             </div>
           </div>
-          <hr className='text-divider m-2.5'/>
+          <hr className="text-divider m-2.5" />
           {/* Main Content Area */}
-          <div className='flex-1 overflow-y-auto flex flex-col gap-4 pb-10'>
-            {mockPlanData.map((plan, index) => {
-              const locationOrder = mockPlanData.slice(0, index + 1).filter(p => p.type === 'location').length;
-              return (
-              <div 
-                key={index} 
-                className={`w-full p-2 bg-white rounded-[8px] shadow-sm transition-colors border border-transparent hover:border-primary ${
-                  plan.type === 'location' ? 'cursor-pointer hover:bg-gray-50' : 'cursor-default'
-                }`}
-                // 2. Logic for click: Only fetch and open if it's a location
-                onClick={() => {
-                  if (plan.type === 'location') {
-                    handleGetSummary(plan.name); // This fetches data AND opens the modal
-                  }
-                }}
-              >
-                <PlanCard
-                  type={plan.type}
-                  name={plan.name}
-                  duration={plan.duration}
-                  estTime={plan.estTime}
-                  summary={plan.summary}
-                  numberOfStops={plan.numberOfStops}
-                  locationIndex={plan.type === 'location' ? locationOrder : undefined}
-                />
+          <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-10">
+            {isLoading && (
+              <div className="w-full p-4 text-center">
+                <p className="text-sub-text">Generating your {searchParams.theme} itinerary...</p>
               </div>
-            )})}
+            )}
+
+            {error && (
+              <div className="rounded-lg p-4 text-center">
+                <p className="mb-3 text-sm text-red-600">Failed to generate plan.</p>
+                <p className="mb-3 text-xs text-red-400">
+                  {typeof error === 'string' ? error : 'Timeout or Server Error'}
+                </p>
+                <button
+                  onClick={handleRetry}
+                  className="bg-primary text-light-text flex w-full cursor-pointer items-center justify-center gap-2 rounded-md py-2 text-sm transition hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
+            {!isLoading && !error && parsedData &&
+              parsedData.days.map((day, dayIdx) => (
+                <div key={`day-${dayIdx}`} className="flex flex-col gap-3">
+                  {/* Timeline Items */}
+                  {day.timeline.map((item, idx) => (
+                    <div
+                      key={`timeline-item-${dayIdx}-${idx}`}
+                      className="w-full rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md cursor-pointer"
+                      onClick={() => {
+                        if (item.lat && item.lng) {
+                          const searchName = (item as any).nameKR || item.nameEN || '';
+                          handlePlanCardClick(item.lat, item.lng, searchName);
+                        }
+                      }}
+                    >
+                      <PlanCard
+                        type={item.type === 'car' ? 'car' : 'location'}
+                        name={item.nameEN}
+                        duration={`${item.start_time} - ${item.end_time}`}
+                        estTime={`${item.duration_minutes} mins`}
+                        summary={item.note}
+                        locationIndex={item.type === 'car' ? undefined : item.index}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ))}
           </div>
         </div>
 
         {/* Map */}
-        <div className='w-2/3 bg-gray-400 h-screen relative'>
-          <SummaryModal 
-            isOpen={summaryModal.isOpen} 
-            onClose={summaryModal.close} 
+        <div className="relative h-screen w-2/3 bg-gray-400">
+          <SummaryModal
+            isOpen={summaryModal.isOpen}
+            onClose={summaryModal.close}
             isLoading={isLoadingSummary}
             data={summaryData}
           />
-          <DynamicNaverMap
-            path={itinerary}
+          <DynamicNaverMap 
+            path={itinerary} 
+            polylinePath={routePath} 
+            activePolylinePath={activeSegmentPath}
+            center={mapCenterState} 
+            initialBounds={initialMapBounds}
+            focusBounds={focusBounds}
           />
         </div>
       </section>
 
       {addModal.isOpen && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center bg-dark-text/20'>
-          <AddModal isOpen={addModal.isOpen} onClose={addModal.close}/>
+        <div className="bg-dark-text/20 fixed inset-0 z-50 flex items-center justify-center">
+          <AddModal isOpen={addModal.isOpen} onClose={addModal.close} />
         </div>
       )}
     </>
