@@ -1,11 +1,9 @@
 import { Request, Response } from 'express'
+import { logger } from '@/config/logger'
 import { mapperService } from './mapper.service'
 
 export const mapperController = {
-  /**
-   * GET /get-directions?start=lng,lat&goal=lng,lat&waypoints=lng,lat|lng,lat&option=trafast
-   * Simple 2-point route or route with waypoints
-   */
+  // GET /get-directions?start=lng,lat&goal=lng,lat&waypoints=lng,lat|lng,lat
   async getDirections(req: Request, res: Response) {
     try {
       const start = req.query.start as string
@@ -43,11 +41,7 @@ export const mapperController = {
     }
   },
 
-  /**
-   * POST /draw-route
-   * Body: { locations: ["lng,lat", "lng,lat", ...] }
-   * Max 7 locations (start + 5 waypoints + goal)
-   */
+  // POST /draw-route - Body: { locations: ["lng,lat", ...] } (max 7)
   async drawRoute(req: Request, res: Response) {
     try {
       const { locations } = req.body
@@ -76,7 +70,6 @@ export const mapperController = {
         })
       }
 
-      // Extract route data for drawing
       const routeKey = Object.keys(result.route)[0]
       const route = result.route[routeKey][0]
 
@@ -90,8 +83,8 @@ export const mapperController = {
             taxiFare: route.summary.taxiFare,
             fuelPrice: route.summary.fuelPrice
           },
-          path: route.path,  // Array of [lng, lat] for drawing
-          guide: route.guide, // Turn-by-turn directions
+          path: route.path,
+          guide: route.guide,
           fullData: result
         }
       })
@@ -99,6 +92,72 @@ export const mapperController = {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to create route',
+        error: error.response?.data || error.message
+      })
+    }
+  },
+
+  // POST /validate-itinerary-duration - Validate duration/distance when adding new stop
+  async validateItineraryDuration(req: Request, res: Response) {
+    try {
+      const { 
+        stopList, 
+        newStop, 
+        insertAfterIndex = 0, 
+        maxDurationHours = 12, 
+        existingSegmentDurations,
+        existingSegmentDistances
+      } = req.body
+
+      if (!stopList || !Array.isArray(stopList) || stopList.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'stopList must be an array with at least 2 coordinates'
+        })
+      }
+
+      if (!newStop || typeof newStop !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'newStop must be a coordinate string in format "lng,lat"'
+        })
+      }
+
+      const coordinatePattern = /^-?\d+\.?\d*,-?\d+\.?\d*$/
+      for (const stop of stopList) {
+        if (!coordinatePattern.test(stop)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid coordinate format: ${stop}. Expected "lng,lat"`
+          })
+        }
+      }
+
+      if (!coordinatePattern.test(newStop)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid newStop coordinate format: ${newStop}. Expected "lng,lat"`
+        })
+      }
+
+      const result = await mapperService.validateItineraryDuration(
+        stopList,
+        newStop,
+        insertAfterIndex,
+        maxDurationHours,
+        existingSegmentDurations,
+        existingSegmentDistances
+      )
+
+      res.status(200).json({
+        success: true,
+        ...result
+      })
+    } catch (error: any) {
+      logger.error('Error validating itinerary duration:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to validate itinerary duration',
         error: error.response?.data || error.message
       })
     }
