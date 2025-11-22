@@ -9,24 +9,24 @@ interface MapCenterState extends MapPoint {
 
 interface NaverMapProps {
   path?: MapPoint[];
-  polylinePath?: number[][]; // The full route
-  activePolylinePath?: number[][]; // NEW: The specific highlighted segment
+  polylinePath?: number[][]; 
+  activePolylinePath?: number[][]; 
   mapZoom?: number;
   center?: MapCenterState;
   onPinClick?: (point: MapPoint) => void;
-  initialBounds?: MapBounds; // For the first load
-  focusBounds?: MapBounds;   // NEW: For clicking driving cards
+  initialBounds?: MapBounds; 
+  focusBounds?: MapBounds;   
 }
 
 const NaverMap: React.FC<NaverMapProps> = ({
   path = [],
   polylinePath = [],
-  activePolylinePath = null, // Default null
+  activePolylinePath = null, 
   center,
   mapZoom = 12,
   onPinClick,
   initialBounds,
-  focusBounds, // Destructure new prop
+  focusBounds, 
 }) => {
   const mapElement = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any | null>(null);
@@ -74,12 +74,11 @@ const NaverMap: React.FC<NaverMapProps> = ({
     mapInstanceRef.current = new window.naver.maps.Map(mapElement.current, mapOptions);
   }, [isNaverReady]);
 
-  // 3. Handle Initial Bounds (Load whole route)
+
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.naver || !initialBounds) return;
 
-    // Only apply initial bounds if we haven't focused on something else yet
     if (!appliedBoundsRef.current && !center?.zoom && !focusBounds) {
         console.log("Auto fitting initial bounds...");
         map.fitBounds(initialBounds.latLngBounds, {
@@ -89,35 +88,28 @@ const NaverMap: React.FC<NaverMapProps> = ({
     }
   }, [initialBounds, isNaverReady]);
 
-  // 4. Handle Focus Bounds (Clicking Driving Card)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.naver || !focusBounds) return;
 
-    // Generate ID to ensure we trigger even if bounds look similar but are logically different updates
     const boundsId = focusBounds.latLngBounds.toString();
     
-    // Always fit bounds when this prop changes
     console.log("Fitting focus bounds...");
     map.fitBounds(focusBounds.latLngBounds, {
         top: 100, right: 100, bottom: 100, left: 100     
     });
     
-  }, [focusBounds]); // Dependency on focusBounds object
+  }, [focusBounds]);
 
-  // 5. Handle Center/Zoom (Clicking Location Pin)
   useEffect(() => {
     if (!mapInstanceRef.current || !center || !window.naver) return;
 
-    // Only morph if there is a specific zoom request (pin click)
-    // This prevents conflict with fitBounds
     if (center.zoom) {
         const targetLocation = new window.naver.maps.LatLng(center.lat, center.lng);
         mapInstanceRef.current.morph(targetLocation, center.zoom);
     }
   }, [center]);
 
-  // 6. Draw Markers and Polylines (Updated for Highlighting)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !window.naver) return;
@@ -137,18 +129,49 @@ const NaverMap: React.FC<NaverMapProps> = ({
     // --- Draw Markers ---
     path.forEach((point, index) => {
       const position = new window.naver.maps.LatLng(point.lat, point.lng);
-      const largerIcon = {
-        url: '/icons/pin.png', 
-        scaledSize: new window.naver.maps.Size(36, 56),
-        origin: new window.naver.maps.Point(0, 0),
-        anchor: new window.naver.maps.Point(18, 56)
-      };
+      // const largerIcon = {
+      //   url: '/icons/pin.png', 
+      //   scaledSize: new window.naver.maps.Size(36, 56),
+      //   origin: new window.naver.maps.Point(0, 0),
+      //   anchor: new window.naver.maps.Point(18, 56)
+      // };
+      // const marker = new window.naver.maps.Marker({
+      //   position: position,
+      //   map: map,
+      //   icon: largerIcon,
+      //   title: point.name || `Stop ${index + 1}`,
+      //   zIndex: 100 
+      // });
+      const markerContent = `
+        <div style="position: relative; width: 36px; height: 56px;">
+            <img src="/icons/pin.png" style="width: 100%; height: 100%; object-fit: contain;" alt="pin" />
+            <span style="
+                position: absolute; 
+                top: 6px; /* Điều chỉnh vị trí dọc để số nằm giữa phần đầu to của pin */
+                left: 50%; 
+                transform: translateX(-50%); 
+                color: #2D6FF7; 
+                font-weight: bold; 
+                font-size: 18px;
+                font-family: sans-serif;
+                text-shadow: 0px 0px 2px rgba(0,0,0,0.5); /* Thêm bóng để số dễ đọc hơn */
+            ">
+                ${index + 1}
+            </span>
+        </div>
+      `;
+
       const marker = new window.naver.maps.Marker({
         position: position,
         map: map,
-        icon: largerIcon,
         title: point.name || `Stop ${index + 1}`,
-        zIndex: 100 
+        zIndex: 100,
+        // Sử dụng icon dạng HTML
+        icon: {
+            content: markerContent,
+            size: new window.naver.maps.Size(36, 56),
+            anchor: new window.naver.maps.Point(18, 56) // Điểm neo vẫn ở giữa đáy (mũi nhọn)
+        }
       });
       window.naver.maps.Event.addListener(marker, "click", () => {
         if (onPinClick) onPinClick(point);
@@ -229,7 +252,7 @@ const NaverMap: React.FC<NaverMapProps> = ({
   const closeStreetView = () => {
     setIsStreetViewVisible(false);
     if (panoramaInstanceRef.current) {
-        panoramaInstanceRef.current.setVisible(false);
+      panoramaInstanceRef.current.setVisible(false);
     }
   };
 
