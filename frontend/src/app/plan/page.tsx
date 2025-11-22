@@ -7,6 +7,8 @@ import { Transition } from '@headlessui/react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
+import Illsutrator from '@/assets/images/illustrator.png';
+
 import {
   FmdGoodOutlined,
   CalendarMonthOutlined,
@@ -185,11 +187,11 @@ export default function Plan() {
 
   return (
     <>
-      <section className="min-h-screen w-full px-4 pt-[108px] md:px-5 xl:px-8 2xl:px-[220px]">
+      <section className="min-h-screen w-full px-4 pt-[108px] md:px-5 xl:px-8 2xl:px-[220px] flex">
         {/* Left section */}
-        <div className="">
+        <div className="w-full lg:w-1/2">
           {/* Title */}
-          <div className="w-full lg:w-1/2">
+          <div className="">
             <h3 className="header-h3 text-dark-text">Start your smart trip planner</h3>
             <p className="paragraph-p2-medium text-sub-text pt-[18px]">
               Please answer these questions
@@ -197,7 +199,7 @@ export default function Plan() {
           </div>
           {/* Contents */}
           <div className="flex flex-col pt-12">
-            <div className="w-full lg:w-1/2">
+            <div className="">
               {questions.map((question, questionIndex) => (
                 <div key={questionIndex} className="flex items-start justify-start gap-4">
                   {/* Left */}
@@ -311,7 +313,14 @@ export default function Plan() {
         </div>
 
         {/* Image */}
-        <div className="hidden lg:block"></div>
+        <div className="hidden lg:flex w-1/2 items-center justify-center p-8">
+          <Image
+            src={Illsutrator}
+            alt='Illustrator'
+            priority
+            className='max-w-full h-auto object-contain'
+          />
+        </div>
       </section>
     </>
   );
