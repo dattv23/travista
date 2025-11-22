@@ -68,9 +68,75 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
   const [validationError, setValidationError] = useState<string | null>(null);
   const [pendingLocation, setPendingLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [totalDuration, setTotalDuration] = useState<string>('');
 
   // Prevent double fetching
   const hasInitiatedRef = useRef(false);
+
+  // Calculate total itinerary duration
+  const calculateTotalDuration = useCallback(() => {
+    let totalMinutes = 0;
+
+    // Calculate time from parsed timeline data (activities + travel time between locations)
+    if (parsedData) {
+      parsedData.days.forEach((day) => {
+        day.timeline.forEach((item) => {
+          // Add activity duration (time spent at location)
+          if (item.duration_minutes) {
+            totalMinutes += item.duration_minutes;
+          }
+        });
+      });
+    }
+
+    // Add travel time from route summary if available (driving time between locations)
+    if (routeSummary?.duration) {
+      // Parse duration string like "120 minutes" or "2 hours 30 minutes"
+      const durationStr = routeSummary.duration;
+      const minutesMatch = durationStr.match(/(\d+)\s*minutes?/i);
+      if (minutesMatch) {
+        const travelMinutes = parseInt(minutesMatch[1]);
+        totalMinutes += travelMinutes;
+      } else {
+        // Try parsing hours and minutes
+        const hoursMatch = durationStr.match(/(\d+)\s*hours?/i);
+        const minsMatch = durationStr.match(/(\d+)\s*minutes?/i);
+        if (hoursMatch) {
+          totalMinutes += parseInt(hoursMatch[1]) * 60;
+        }
+        if (minsMatch) {
+          totalMinutes += parseInt(minsMatch[1]);
+        }
+      }
+    }
+
+    // Format the duration
+    if (totalMinutes > 0) {
+      const hours = Math.floor(totalMinutes / 60);
+      const mins = totalMinutes % 60;
+      const locationCount = itinerary.length;
+      
+      if (hours > 0) {
+        setTotalDuration(`Est. ${hours} ${hours === 1 ? 'hour' : 'hours'}${mins > 0 ? ` ${mins} min` : ''} (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+      } else {
+        setTotalDuration(`Est. ${mins} min (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+      }
+    } else {
+      // Fallback if calculation fails
+      const locationCount = itinerary.length;
+      if (routeSummary?.duration) {
+        // Just show route duration if we have it
+        setTotalDuration(`Est. ${routeSummary.duration} (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+      } else {
+        setTotalDuration(`Est. (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+      }
+    }
+  }, [parsedData, routeSummary, itinerary.length]);
+
+  // Update total duration when data changes
+  useEffect(() => {
+    calculateTotalDuration();
+  }, [calculateTotalDuration]);
 
   const generatePlan = useCallback(() => {
     if (!initialItinerary.length || !initialItinerary[0].lat || !initialItinerary[0].lng) {
@@ -480,7 +546,9 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               <div className="flex flex-col gap-2">
                 <p className="paragraph-p3-medium text-dark-text">{searchParams.theme} itinerary</p>
                 <p className="paragraph-p3-medium text-sub-text">Start date: {searchParams.date}</p>
-                <p className="paragraph-p3-medium text-sub-text">Est. 15 hours (5 locations)</p>
+                <p className="paragraph-p3-medium text-sub-text">
+                  {totalDuration || `Est. (${itinerary.length} ${itinerary.length === 1 ? 'location' : 'locations'})`}
+                </p>
               </div>
               <div className="flex flex-col gap-2">
                 <p className="paragraph-p3-medium text-sub-text">{searchParams.people}</p>
