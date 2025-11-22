@@ -93,14 +93,12 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       theme: searchParams.theme,
     };
 
-    console.log('Request: ', request);
+    // console.log('Request: ', request);
 
     createItinerary(request)
       .then(() => console.log('AI Itinerary Generated Successfully'))
       .catch((err) => console.error('AI Generation Failed:', err));
   }, [initialItinerary, searchParams, createItinerary]);
-
-  // console.log('Planner Itinerary: ', plannerItinerary?.itinerary);
 
   useEffect(() => {
     if (!hasInitiatedRef.current) {
@@ -109,7 +107,6 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
   }, [generatePlan]);
 
-  // --- 2. Process Data & Inject Logic ---
   useEffect(() => {
     if (plannerItinerary && plannerItinerary.itinerary) {
       try {
