@@ -80,7 +80,7 @@ const questions = [
 
 const formatDateToLocalISO = (date: Date): string => {
   const offset = date.getTimezoneOffset();
-  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+  const localDate = new Date(date.getTime() - offset * 60 * 1000);
   return localDate.toISOString().split('T')[0];
 };
 
@@ -97,13 +97,13 @@ export default function Plan() {
 
   const [answers, setAnswers] = useState<{ [key: number]: string }>(() => {
     const initialAnswers: { [key: number]: string } = {};
-    
+
     questions.forEach((question, index) => {
       if (question.type === 'dropdown') {
         initialAnswers[index] = question.options[0] || '';
       } else if (question.type === 'calendar') {
         const today = new Date();
-        initialAnswers[index] = today.toLocaleDateString('en-GB'); 
+        initialAnswers[index] = today.toLocaleDateString('en-GB');
       } else {
         initialAnswers[index] = '';
       }
@@ -171,17 +171,17 @@ export default function Plan() {
       location: answers[0] || '',
       lat: selectedLocation.lat.toString(),
       lng: selectedLocation.lng.toString(),
-      date: answers[1] || '', 
-      duration: numberOfDays, 
+      date: answers[1] || '',
+      duration: numberOfDays,
       people: answers[3] || '',
       budget: answers[4] || '',
-      theme: answers[5] || ''
+      theme: answers[5] || '',
     });
 
     console.log('🔗 Generating with:', Object.fromEntries(queryParams.entries()));
 
-    router.push(`plan/ai-generated?${queryParams.toString()}`)
-  }
+    router.push(`plan/ai-generated?${queryParams.toString()}`);
+  };
 
   return (
     <>
@@ -243,9 +243,12 @@ export default function Plan() {
                         />
                       ) : question.type === 'search' ? (
                         <>
-                          <SearchLocationInput onSelect={handleLocationSelect} error={locationError}/>
+                          <SearchLocationInput
+                            onSelect={handleLocationSelect}
+                            error={locationError}
+                          />
                           {locationError && (
-                            <p className="text-red-500 text-xs mt-2 ml-1">
+                            <p className="mt-2 ml-1 text-xs text-red-500">
                               * Please select a destination to continue.
                             </p>
                           )}
@@ -300,7 +303,7 @@ export default function Plan() {
             </div>
             <button
               onClick={handleGenerateClick}
-              className="inline-box paragraph-p2-medium text-light-text bg-secondary mb-12 ml-[74px] max-w-max rounded-[8px] px-[25px] py-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)] cursor-pointer"
+              className="inline-box paragraph-p2-medium text-light-text bg-secondary mb-12 ml-[74px] max-w-max cursor-pointer rounded-[8px] px-[25px] py-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)]"
             >
               Generate
             </button>

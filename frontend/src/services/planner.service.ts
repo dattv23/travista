@@ -10,11 +10,13 @@ export const plannerService = {
         `${process.env.NEXT_PUBLIC_NODE_API_URL}/api/planner/create-itinerary`,
         request,
         {
-          timeout: 9000,
+          timeout: 24000,
         }
-      );
+      ); 
 
-      return response.data;
+      console.log("Full Response Object:", response);
+
+      return response as unknown as PlannerResponse;
     } catch (error: any) {
       let errorMessage =
         error.response?.data?.message || error.message || 'Failed to create itinerary';

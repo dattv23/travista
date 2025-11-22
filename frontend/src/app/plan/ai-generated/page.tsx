@@ -15,7 +15,7 @@ interface PageProps {
 
 export default async function GeneratedPlanPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  
+
   const lat = params.lat ? parseFloat(params.lat) : null;
   const lng = params.lng ? parseFloat(params.lng) : null;
 
@@ -32,7 +32,7 @@ export default async function GeneratedPlanPage({ searchParams }: PageProps) {
           {
             // Default fallback (Seoul City Hall) if coords are missing
             lat: 37.5665,
-            lng: 126.9780,
+            lng: 126.978,
           },
         ];
 

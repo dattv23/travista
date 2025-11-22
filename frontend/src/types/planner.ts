@@ -5,6 +5,10 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface AIItineraryResult {
+  days: DayPlan[];
+}
+
 export interface PlannerRequest {
   destination: { lat: number; lng: number };
   startDate: string;
@@ -17,14 +21,16 @@ export interface PlannerRequest {
 // 2. The specific structure of the AI JSON string
 export interface TimelineItem {
   index: number;
-  name: string;
-  type: 'attraction' | 'restaurant';
+  nameEN: string;
+  nameKR?: string;
+  type: 'attraction' | 'restaurant' | 'car';
   start_time: string;
   end_time: string;
   duration_minutes: number;
   lat: number | null;
   lng: number | null;
   note: string;
+  uniqueId?: string;
 }
 
 export interface DayPlan {
@@ -35,6 +41,25 @@ export interface DayPlan {
 
 export interface AIItineraryResult {
   days: DayPlan[];
+}
+
+export interface RouteSection {
+  pointIndex: number;
+  distanceText: string;
+  durationMinutes: number;
+  start: { lat: number; lng: number };
+  end: { lat: number; lng: number };
+  path?: number[][];
+}
+
+export interface RouteData {
+  summary: {
+    distance: string;
+    duration: string;
+    taxiFare: number;
+  };
+  sections: RouteSection[];
+  path: number[][];
 }
 
 export interface Place {
