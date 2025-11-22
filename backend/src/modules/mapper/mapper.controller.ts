@@ -19,7 +19,7 @@ export const mapperController = {
       }
 
       const result = await mapperService.getDirections(start, goal, waypoints, option)
-      
+
       if (result.code !== 0) {
         return res.status(400).json({
           success: false,
@@ -61,7 +61,7 @@ export const mapperController = {
       }
 
       const result = await mapperService.createRouteFromLocations(locations)
-      
+
       if (result.code !== 0) {
         return res.status(400).json({
           success: false,
@@ -73,6 +73,37 @@ export const mapperController = {
       const routeKey = Object.keys(result.route)[0]
       const route = result.route[routeKey][0]
 
+      let sections = []
+
+      if (route.section && Array.isArray(route.section)) {
+        sections = route.section.map((sec: any, index: number) => {
+          const startCoords = locations[index].split(',').map(Number)
+          const endCoords = locations[index + 1].split(',').map(Number)
+
+          return {
+            pointIndex: sec.pointIndex,
+            start: { lng: startCoords[0], lat: startCoords[1] },
+            end: { lng: endCoords[0], lat: endCoords[1] },
+            distanceText: `${(sec.distance / 1000).toFixed(1)} km`,
+            durationMinutes: Math.round(sec.duration / 60000)
+          }
+        })
+      } else {
+        // Start -> Goal
+        const startCoords = locations[0].split(',').map(Number)
+        const endCoords = locations[locations.length - 1].split(',').map(Number)
+
+        sections = [
+          {
+            pointIndex: 0,
+            start: { lng: startCoords[0], lat: startCoords[1] },
+            end: { lng: endCoords[0], lat: endCoords[1] },
+            distanceText: `${(route.summary.distance / 1000).toFixed(1)} km`,
+            durationMinutes: Math.round(route.summary.duration / 60000)
+          }
+        ]
+      }
+
       res.status(200).json({
         success: true,
         data: {
@@ -83,9 +114,9 @@ export const mapperController = {
             taxiFare: route.summary.taxiFare,
             fuelPrice: route.summary.fuelPrice
           },
+          sections: sections,
           path: route.path,
-          guide: route.guide,
-          fullData: result
+          guide: route.guide
         }
       })
     } catch (error: any) {

@@ -16,5 +16,8 @@ export const API_CONFIG = {
       LIST: '/posts',
       DETAIL: (id: string) => `/posts/${id}`,
     },
+    PLANNER: {
+      CREATE_ITINERARY: '/api/planner/create-itinerary',
+    },
   },
 }

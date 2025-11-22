@@ -1,6 +1,6 @@
 
 import { LocationFill } from '@/assets/icons/LocationFill';
-import { DirectionsBusFilledOutlined, DirectionsSubwayFilledOutlined, StorefrontOutlined } from '@mui/icons-material';
+import { DirectionsBusFilledOutlined, DirectionsSubwayFilledOutlined, DirectionsCarFilledOutlined } from '@mui/icons-material';
 
 interface PlanCardProps {
   type: string;
@@ -8,7 +8,6 @@ interface PlanCardProps {
   duration: string;
   estTime: string;
   summary: string;
-  numberOfStops: number | null;
   locationIndex?: number;
 }
 
@@ -16,8 +15,9 @@ const iconList = [
   {type: "location", icon: LocationFill},
   {type: "bus", icon: DirectionsBusFilledOutlined},
   {type: "subway", icon: DirectionsSubwayFilledOutlined},
+  {type: "car", icon: DirectionsCarFilledOutlined}
 ];
-const transportation = ["bus", "subway"];
+const transportation = ["bus", "subway", "car"];
 
 export default function PlanCard({
   type,
@@ -25,7 +25,6 @@ export default function PlanCard({
   duration,
   estTime,
   summary,
-  numberOfStops,
   locationIndex,
 }: PlanCardProps) {
 
@@ -58,7 +57,7 @@ export default function PlanCard({
       <div className='w-full flex flex-col gap-1.5'>
         <div className='flex flex-col gap-1.5'>
           <p className='flex justify-between paragraph-p2-bold text-dark-text'>{name} <span className='paragraph-p3-medium text-secondary'>{duration}</span></p>
-          <p className='w-full flex justify-between paragraph-p4-medium text-sub-text'>Est. {estTime} {type in transportation && <span >{numberOfStops}</span>}</p>
+          <p className='w-full flex justify-between paragraph-p4-medium text-sub-text'>Est. {estTime}</p>
         </div>
         {type === "location" && (
           <div>
