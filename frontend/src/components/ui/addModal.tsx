@@ -4,11 +4,18 @@ import { useState } from "react";
 
 import { FmdGoodOutlined, CloseOutlined } from '@mui/icons-material';
 import ImageDropzone from "./imageDropzone";
+import SearchLocationInput from "./searchLocationInput";
 
 interface AddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm?: (locationName: string) => void;
+  onConfirm?: (location: { name: string; lat: number; lng: number }, forceAdd?: boolean) => void;
+  validationWarning?: string | null;
+  validationError?: string | null;
+  isValidating?: boolean;
+  onValidationChange?: (warning: string | null) => void;
+  onAddAnyway?: () => void;
+  onCancel?: () => void;
 }
 
 interface AnalyzeResponse {
@@ -30,15 +37,47 @@ interface ScanResult {
   note?: string | null;  
 }
 
-export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
+export function AddModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  validationWarning: externalWarning, 
+  validationError: externalError,
+  isValidating = false,
+  onValidationChange,
+  onAddAnyway,
+  onCancel
+} : AddModalProps) {
   if (!isOpen) return null;
 
   const [modeActive, setModeActive] = useState("input");
-  const [inputValue, setInputValue] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [internalWarning, setInternalWarning] = useState<string | null>(null);
+  
+  const validationWarning = externalWarning || internalWarning;
 
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+
+  const handleLocationSelect = (location: { name: string; lat: number; lng: number }) => {
+    setSelectedLocation(location);
+    setInternalWarning(null);
+    if (onValidationChange) {
+      onValidationChange(null);
+    }
+  };
+
+  const handleAddLocation = () => {
+    if (selectedLocation && onConfirm) {
+      onConfirm(selectedLocation);
+      setSelectedLocation(null);
+      setInternalWarning(null);
+      if (onValidationChange) {
+        onValidationChange(null);
+      }
+    }
+  };
 
   // const isValidLocation = detectedLocation && detectedLocation !== "Unknown location" && !note;
 
@@ -118,18 +157,77 @@ export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
         {modeActive === "input" ? (
           <div className="flex flex-col gap-3">
             <div className="relative w-full flex gap-2">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sub-text"><FmdGoodOutlined /></div>
-              <input 
-                type='text'
-                placeholder={'Enter a location'}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="w-full rounded-lg border-2 border-sub-text p-3 pl-10 text-dark-text paragraph-p3-medium placeholder-[color-mix(in_srgb,var(--color-hover),black_20%)] focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition"
-              />
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sub-text z-10"><FmdGoodOutlined /></div>
+              <div className="relative w-full">
+                <SearchLocationInput onSelect={handleLocationSelect} />
+              </div>
               <button
-                className="bg-primary text-light-text rounded-[8px] px-4 transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
-              >Add</button>
+                onClick={handleAddLocation}
+                disabled={!selectedLocation || isValidating}
+                className="bg-primary text-light-text rounded-[8px] px-4 transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                {isValidating ? 'Validating...' : 'Add'}
+              </button>
             </div>
+            {selectedLocation && (
+              <div className="p-2 bg-gray-50 rounded-md border border-gray-200">
+                <p className="text-sm text-dark-text">
+                  <span className="font-medium">Selected:</span> {selectedLocation.name}
+                </p>
+              </div>
+            )}
+            {externalWarning && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-sm text-yellow-800 mb-3">{externalWarning}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (onAddAnyway) {
+                        onAddAnyway();
+                      }
+                    }}
+                    className="flex-1 bg-yellow-600 text-white px-4 py-2 rounded-[8px] transition cursor-pointer hover:bg-yellow-700 text-sm font-medium"
+                  >
+                    Add Anyway
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (onCancel) {
+                        onCancel();
+                      }
+                      setSelectedLocation(null);
+                      setInternalWarning(null);
+                      if (onValidationChange) {
+                        onValidationChange(null);
+                      }
+                    }}
+                    className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-[8px] transition cursor-pointer hover:bg-gray-300 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {externalError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-800 mb-3">{externalError}</p>
+                <button
+                  onClick={() => {
+                    if (onCancel) {
+                      onCancel();
+                    }
+                    setSelectedLocation(null);
+                    setInternalWarning(null);
+                    if (onValidationChange) {
+                      onValidationChange(null);
+                    }
+                  }}
+                  className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded-[8px] transition cursor-pointer hover:bg-gray-300 text-sm font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -177,10 +275,10 @@ export function AddModal({ isOpen, onClose, onConfirm } : AddModalProps) {
                       {(scanResult.name !== "Unknown location" && !scanResult.note) && (
                         <button
                           onClick={() => {
-                            if (onConfirm) {
-                              onConfirm(scanResult.name);
-                              onClose();
-                            }
+                            // Note: For image mode, we would need location coordinates
+                            // This would require additional API call to get coords from name
+                            // For now, just close modal - user can use input mode
+                            onClose();
                           }}
                           className="bg-primary text-light-text px-4 py-2.5 ml-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] whitespace-nowrap"
                         >

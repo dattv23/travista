@@ -86,7 +86,7 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
               className="text-dark-text hover:bg-hover block w-full cursor-pointer px-4 py-2 text-left transition"
               onClick={() => {
                 const locationData = {
-                  name: item.roadAddress || item.jibunAddress,
+                  name: item.placeName || item.roadAddress || item.jibunAddress,
                   lat: parseFloat(item.y),
                   lng: parseFloat(item.x),
                 };
@@ -97,10 +97,13 @@ export default function SearchLocationInput({ onSelect, error }: SearchLocationP
               }}
             >
               <div className="paragraph-p2-medium text-dark-text">
-                {item.roadAddress || item.jibunAddress}
+                {item.placeName || item.roadAddress || item.jibunAddress}
               </div>
               <div className="text-xs text-sub-text">
-                 {item.jibunAddress !== item.roadAddress ? item.jibunAddress : ''}
+                {item.roadAddress && item.roadAddress !== item.placeName ? item.roadAddress : ''}
+                {item.categoryName && (
+                  <span className="ml-1 text-gray-400">({item.categoryName.split('>').pop()?.trim()})</span>
+                )}
               </div>
             </li>
           ))}

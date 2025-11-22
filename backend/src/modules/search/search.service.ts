@@ -15,41 +15,54 @@ export const searchService = {
       return cachedResult
     }
 
-    logger.info('Fetching addresses...', { keyword })
+    logger.info('Fetching places by keyword...', { keyword })
 
-    // Check if API keys are configured
-    if (!process.env.NAVER_MAPS_CLIENT_ID || !process.env.NAVER_MAPS_CLIENT_SECRET) {
-      logger.error('Naver Maps API keys not configured')
-      throw new Error('Naver Maps API keys are not configured')
+    // Check if Kakao API key is configured
+    if (!process.env.KAKAO_REST_API_KEY) {
+      logger.error('Kakao REST API key not configured')
+      throw new Error('Kakao REST API key is not configured')
     }
 
     try {
-      const res = await axios.get(`https://maps.apigw.ntruss.com/map-geocode/v2/geocode`, {
+      // Use Kakao Local Search API for place names (better for Korean places)
+      const res = await axios.get('https://dapi.kakao.com/v2/local/search/keyword.json', {
         params: {
-          query: keyword,
-          language: 'eng'
+          query: keyword.trim(),
+          size: 15 // Get more results
         },
         headers: {
-          Accept: 'application/json',
-          'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID,
-          'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET
+          Authorization: `KakaoAK ${process.env.KAKAO_REST_API_KEY}`
         }
       })
 
-      logger.info('Naver Geocode API response:', {
+      logger.info('Kakao Local Search API response:', {
         status: res.status,
-        addressCount: res.data?.addresses?.length || 0
+        placeCount: res.data?.documents?.length || 0,
+        keyword
       })
 
-      const items = res.data?.addresses || []
+      // Transform Kakao response to match expected format (similar to Naver geocode format)
+      const places = res.data?.documents || []
+      const items = places.map((place: any) => ({
+        roadAddress: place.road_address_name || place.address_name,
+        jibunAddress: place.address_name,
+        englishAddress: place.english_name || '',
+        x: place.x, // longitude
+        y: place.y, // latitude
+        placeName: place.place_name,
+        categoryName: place.category_name,
+        placeUrl: place.place_url,
+        phone: place.phone || ''
+      }))
 
       if (items.length > 0) {
         searchCache.set(cacheKey, items)
       }
 
+      logger.info(`Found ${items.length} places for keyword: ${keyword}`)
       return items
     } catch (error: any) {
-      logger.error('Error fetching addresses by keyword:', {
+      logger.error('Error fetching places by keyword:', {
         message: error.message,
         response: axios.isAxiosError(error)
           ? {

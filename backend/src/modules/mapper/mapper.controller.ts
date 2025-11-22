@@ -1,4 +1,5 @@
 import { Request, Response } from 'express'
+import { logger } from '@/config/logger'
 import { mapperService } from './mapper.service'
 
 export const mapperController = {
@@ -130,6 +131,83 @@ export const mapperController = {
       res.status(500).json({
         success: false,
         message: error.message || 'Failed to create route',
+        error: error.response?.data || error.message
+      })
+    }
+  },
+
+  /**
+   * POST /mapper/validate-itinerary-duration
+   * Validate itinerary duration/distance when adding a new stop
+   * Body: {
+   *   stopList: ["lng,lat", "lng,lat", ...],
+   *   newStop: "lng,lat",
+   *   insertAfterIndex: 0,
+   *   maxDurationHours: 12,
+   *   existingSegmentDurations?: [minutes, ...],
+   *   existingSegmentDistances?: [meters, ...]
+   * }
+   */
+  async validateItineraryDuration(req: Request, res: Response) {
+    try {
+      const { 
+        stopList, 
+        newStop, 
+        insertAfterIndex = 0, 
+        maxDurationHours = 12, 
+        existingSegmentDurations,
+        existingSegmentDistances
+      } = req.body
+
+      if (!stopList || !Array.isArray(stopList) || stopList.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: 'stopList must be an array with at least 2 coordinates'
+        })
+      }
+
+      if (!newStop || typeof newStop !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'newStop must be a coordinate string in format "lng,lat"'
+        })
+      }
+
+      const coordinatePattern = /^-?\d+\.?\d*,-?\d+\.?\d*$/
+      for (const stop of stopList) {
+        if (!coordinatePattern.test(stop)) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid coordinate format: ${stop}. Expected "lng,lat"`
+          })
+        }
+      }
+
+      if (!coordinatePattern.test(newStop)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid newStop coordinate format: ${newStop}. Expected "lng,lat"`
+        })
+      }
+
+      const result = await mapperService.validateItineraryDuration(
+        stopList,
+        newStop,
+        insertAfterIndex,
+        maxDurationHours,
+        existingSegmentDurations,
+        existingSegmentDistances
+      )
+
+      res.status(200).json({
+        success: true,
+        ...result
+      })
+    } catch (error: any) {
+      logger.error('Error validating itinerary duration:', error)
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to validate itinerary duration',
         error: error.response?.data || error.message
       })
     }
