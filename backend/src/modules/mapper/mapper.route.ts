@@ -16,3 +16,17 @@ mapperRouter.get('/get-directions', mapperController.getDirections)
  * Body: { locations: ["lng,lat", "lng,lat", "lng,lat", ...] }
  */
 mapperRouter.post('/draw-route', mapperController.drawRoute)
+
+/**
+ * POST /mapper/validate-itinerary-duration
+ * Validate itinerary duration and distance when adding a new stop
+ * Body: {
+ *   stopList: ["lng,lat", "lng,lat", ...],
+ *   newStop: "lng,lat",
+ *   insertAfterIndex: 0,
+ *   maxDurationHours: 12,
+ *   existingSegmentDurations?: [minutes, ...],
+ *   existingSegmentDistances?: [meters, ...]
+ * }
+ */
+mapperRouter.post('/validate-itinerary-duration', mapperController.validateItineraryDuration)
