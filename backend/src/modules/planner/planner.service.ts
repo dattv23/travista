@@ -162,58 +162,6 @@ export const plannerService = {
         }
       }
 
-      // get route from API
-      //   const res = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving?option=trafast', {
-      //     params: { start, goal },
-      //     headers: {
-      //       'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
-      //       'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!
-      //     }
-      //   })
-
-      //   const route = res.data?.route?.trafast?.[0]
-      //   if (route) {
-      //     const routeData = {
-      //       distance: route.summary.distance,
-      //       duration: route.summary.duration
-      //     }
-
-      //     RouteCache.findOneAndUpdate(
-      //       {
-      //         startLat: roundedStartLat,
-      //         startLng: roundedStartLng,
-      //         goalLat: roundedGoalLat,
-      //         goalLng: roundedGoalLng
-      //       },
-      //       {
-      //         startLat: roundedStartLat,
-      //         startLng: roundedStartLng,
-      //         goalLat: roundedGoalLat,
-      //         goalLng: roundedGoalLng,
-      //         distance: routeData.distance,
-      //         duration: routeData.duration
-      //       },
-      //       { upsert: true, new: true }
-      //     ).catch((err) => {
-      //       logger.warn('Failed to cache route:', err)
-      //     })
-
-      //     return routeData
-      //   }
-      // } catch (error) {
-      //   if (axios.isAxiosError(error)) {
-      //     logger.warn(`Naver Maps API error for route ${start} → ${goal}:`, {
-      //       status: error.response?.status,
-      //       statusText: error.response?.statusText,
-      //       data: error.response?.data,
-      //       message: error.message
-      //     })
-      //   } else {
-      //     logger.warn(`Error calculating route ${start} → ${goal}:`, error)
-      //   }
-
-      //   return null // Return null instead of throwing so the workflow can continue
-      // }
       const rawData = await mapperService.getDirections(start, goal)
 
       if (rawData.code === 0) {
@@ -281,14 +229,6 @@ export const plannerService = {
 
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
-
-    // state.places.slice(5).forEach((place) => {
-    //   state.userDestinationMatrix.push({
-    //     ...place,
-    //     distance: 0,
-    //     duration: 0
-    //   })
-    // })
 
     return state
   },
