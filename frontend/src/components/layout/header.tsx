@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from 'next/navigation';
 
-import { LanguageOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined, AccountCircleOutlined } from '@mui/icons-material';
+import { LanguageOutlined, KeyboardArrowDownOutlined, KeyboardArrowUpOutlined, AccountCircleOutlined, MenuOutlined, CloseOutlined } from '@mui/icons-material';
 import logo from "@/assets/logo.svg";
 import { useAuth } from "@/contexts/AuthContext";
 import Dropdown from "../ui/dropdown";
@@ -24,6 +24,7 @@ export default function Header() {
 
   const [language, setLanguage] = useState(languages[0].code);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const router = useRouter();
   const pathname = usePathname();
@@ -65,23 +66,26 @@ export default function Header() {
             Travista
           </Link>
         </div>
-        <div className="flex paragraph-p2-medium gap-[50px]">
-          {navLinks.map((nav, index) => {
-            const isActive = pathname === nav.path;
-            const isProtected = nav.path === '/plan';
-            const path = (isProtected && !isAuthenticated) ? '/auth/login' : nav.path;
-            return(
-              <Link key={index} href={path} className={`relative group ${isActive && 'text-primary'}`}>
-                {nav.title}
-                <span className={`
-                    absolute left-0 -bottom-1 h-[3px] rounded-2xl w-full 
-                    bg-primary origin-left transform transition-all duration-300 ease-out 
-                    ${isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} 
-                  `} />
-              </Link>
-          )})}
-        </div>
-        <div className="flex paragraph-p2-medium gap-4">
+
+        {/* Desktop */}
+        <nav className="hidden md:flex paragraph-p2-medium gap-[50px]">
+            {navLinks.map((nav, index) => {
+              const isActive = pathname === nav.path;
+              const isProtected = nav.path === '/plan';
+              const path = (isProtected && !isAuthenticated) ? '/auth/login' : nav.path;
+              return(
+                <Link key={index} href={path} className={`relative group ${isActive && 'text-primary'}`}>
+                  {nav.title}
+                  <span className={`
+                      absolute left-0 -bottom-1 h-[3px] rounded-2xl w-full 
+                      bg-primary origin-left transform transition-all duration-300 ease-out 
+                      ${isActive ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} 
+                    `} />
+                </Link>
+            )})}
+        </nav>
+        {/* Desktop dropdown */}
+        <div className="hidden md:flex paragraph-p2-medium gap-4">
           <Dropdown
             isOpen={openDropdown === 'language'}
             widthClass="w-full" 
@@ -147,6 +151,107 @@ export default function Header() {
                 `}>Sign up</Link>
             </>
           )}
+        </div>
+
+        {/* Mobile */}
+        <button
+          className="md:hidden flex items-center justify-center text-sub-text p-2 transition rounded-full cursor-pointer hover:bg-hover"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          {isMobileMenuOpen ? <CloseOutlined fontSize="large"/> : <MenuOutlined fontSize="large"/>}
+        </button>
+        {/* Mobile dropdown */}
+        <div
+          className={`
+            absolute top-[92px] left-0 w-full bg-background shadow-lg md:hidden flex flex-col overflow-hidden
+            transition-all duration-300 ease-in-out origin-top
+            ${isMobileMenuOpen ? 'max-h-screen opacity-100 py-6 border-t border-divider' : 'max-h-0 opacity-0 py-0 border-none'}
+          `}
+        >
+          <div className="flex flex-col px-6 gap-6">
+            <nav className="flex flex-col gap-4">
+              {navLinks.map((nav, index) => {
+                const isActive = pathname === nav.path || (nav.path !== '/' && pathname?.startsWith(nav.path));
+                const isProtected = nav.path === '/plan';
+                const path = (isProtected && !isAuthenticated) ? '/auth/login' : nav.path;
+                return (
+                  <Link 
+                    key={index} 
+                    href={path} 
+                    className={`paragraph-p2-medium ${isActive ? 'text-primary' : 'text-dark-text'}`}
+                  >
+                    {nav.title}
+                  </Link>
+              )})}
+            </nav>
+          </div>
+          <hr className="text-divider my-4"/>
+          <div className="flex gap-4 px-4 justify-end">
+            <Dropdown
+              isOpen={openDropdown === 'language'}
+              widthClass="w-full" 
+              trigger={
+                <button 
+                  onClick={() => handleToggleDropdown('language')} 
+                  className={`
+                    px-[15px] py-2.5 bg-transparent flex justify-center items-center gap-4 border-2 rounded-[8px] relative cursor-pointer transition text-[color-mix(in_srgb,var(--color-sub-text),black_10%)]
+                  `}
+                >
+                  <div className="flex gap-1.5">
+                    <LanguageOutlined />
+                    {language}
+                  </div>
+                  {openDropdown === 'language' ? <KeyboardArrowUpOutlined /> : <KeyboardArrowDownOutlined />}
+                </button>
+              }
+            >
+              {languages.map((language, index) => (
+                <button 
+                  key={index} 
+                  onClick={() => handleLanguageOption(language.code)} 
+                  className="block w-full text-left px-4 py-2 text-dark-text hover:bg-hover transition cursor-pointer" 
+                >
+                  {language.title}
+                </button>
+              ))}
+            </Dropdown>
+            {isAuthenticated ? (
+              <Dropdown
+                isOpen={openDropdown === 'user'}
+                widthClass="w-full" 
+                trigger={
+                  <button 
+                    onClick={() => handleToggleDropdown('user')}
+                    className="w-40 px-[15px] py-2.5 bg-transparent flex justify-between items-center gap-4 border-2 rounded-[8px] relative cursor-pointer transition text-[color-mix(in_srgb,var(--color-sub-text),black_10%)]"
+                  >
+                    <div className="flex items-center gap-2">
+                      <AccountCircleOutlined />
+                      {getDisplayName()}
+                    </div>
+                    {openDropdown === 'user' ? <KeyboardArrowUpOutlined /> : <KeyboardArrowDownOutlined />}
+                  </button>
+                }
+              >
+                <button 
+                  onClick={handleLogout}
+                  className="block w-full text-left px-4 py-2 text-dark-text hover:bg-hover transition cursor-pointer" 
+                >
+                  Log Out
+                </button>
+              </Dropdown>
+            ) : (
+              <>
+                <Link href={'/auth/login'} className={`
+                    px-[25px] py-2.5 flex justify-center items-center border-2 rounded-[8px] transition-all bg-primary text-light-text border-transparent hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]
+                  `}>Log in</Link>
+      
+                <Link href={'/auth/signup'} className={`
+                    px-[25px] py-2.5 bg-transparent flex justify-center items-center border-2 rounded-[8px] transition-all
+                    text-primary border-primary hover:bg-hover
+                  `}>Sign up</Link>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>
