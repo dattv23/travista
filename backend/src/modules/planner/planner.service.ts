@@ -6,6 +6,7 @@ import { logger } from '@/config/logger'
 import { smartTripPrompt } from '@/utils/prompts'
 import { IUserInput } from './planner.validation'
 import { parseItinerary } from '@/utils/parseItinerary'
+import { mapperService } from '../mapper/mapper.service'
 
 export const plannerService = {
   async getTouristAttractions(state: IItineraryState): Promise<IItineraryState> {
@@ -152,6 +153,7 @@ export const plannerService = {
       const roundedStartLng = Math.round(startLng * 10000) / 10000
       const roundedGoalLat = Math.round(goalLat * 10000) / 10000
       const roundedGoalLng = Math.round(goalLng * 10000) / 10000
+
       const cachedRoute = await RouteCache.findOne({ startLat: roundedStartLat, startLng: roundedStartLng, goalLat: roundedGoalLat, goalLng: roundedGoalLng })
       if (cachedRoute) {
         return {
@@ -161,56 +163,81 @@ export const plannerService = {
       }
 
       // get route from API
-      const res = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving?option=trafast', {
-        params: { start, goal },
-        headers: {
-          'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
-          'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!
-        }
-      })
+      //   const res = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving?option=trafast', {
+      //     params: { start, goal },
+      //     headers: {
+      //       'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
+      //       'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!
+      //     }
+      //   })
 
-      const route = res.data?.route?.trafast?.[0]
-      if (route) {
+      //   const route = res.data?.route?.trafast?.[0]
+      //   if (route) {
+      //     const routeData = {
+      //       distance: route.summary.distance,
+      //       duration: route.summary.duration
+      //     }
+
+      //     RouteCache.findOneAndUpdate(
+      //       {
+      //         startLat: roundedStartLat,
+      //         startLng: roundedStartLng,
+      //         goalLat: roundedGoalLat,
+      //         goalLng: roundedGoalLng
+      //       },
+      //       {
+      //         startLat: roundedStartLat,
+      //         startLng: roundedStartLng,
+      //         goalLat: roundedGoalLat,
+      //         goalLng: roundedGoalLng,
+      //         distance: routeData.distance,
+      //         duration: routeData.duration
+      //       },
+      //       { upsert: true, new: true }
+      //     ).catch((err) => {
+      //       logger.warn('Failed to cache route:', err)
+      //     })
+
+      //     return routeData
+      //   }
+      // } catch (error) {
+      //   if (axios.isAxiosError(error)) {
+      //     logger.warn(`Naver Maps API error for route ${start} → ${goal}:`, {
+      //       status: error.response?.status,
+      //       statusText: error.response?.statusText,
+      //       data: error.response?.data,
+      //       message: error.message
+      //     })
+      //   } else {
+      //     logger.warn(`Error calculating route ${start} → ${goal}:`, error)
+      //   }
+
+      //   return null // Return null instead of throwing so the workflow can continue
+      // }
+      const rawData = await mapperService.getDirections(start, goal)
+
+      if (rawData.code === 0) {
+        const routeKey = Object.keys(rawData.route)[0]
+        const summary = rawData.route[routeKey][0].summary
+
         const routeData = {
-          distance: route.summary.distance,
-          duration: route.summary.duration
+          distance: summary.distance,
+          duration: summary.duration
         }
 
+        // 4. Lưu vào Cache cho lần sau
         RouteCache.findOneAndUpdate(
-          {
-            startLat: roundedStartLat,
-            startLng: roundedStartLng,
-            goalLat: roundedGoalLat,
-            goalLng: roundedGoalLng
-          },
-          {
-            startLat: roundedStartLat,
-            startLng: roundedStartLng,
-            goalLat: roundedGoalLat,
-            goalLng: roundedGoalLng,
-            distance: routeData.distance,
-            duration: routeData.duration
-          },
+          { startLat: roundedStartLat, startLng: roundedStartLng, goalLat: roundedGoalLat, goalLng: roundedGoalLng },
+          { ...routeData, startLat: roundedStartLat, startLng: roundedStartLng, goalLat: roundedGoalLat, goalLng: roundedGoalLng },
           { upsert: true, new: true }
-        ).catch((err) => {
-          logger.warn('Failed to cache route:', err)
-        })
+        ).catch((err) => logger.warn('Failed to cache route:', err))
 
         return routeData
       }
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        logger.warn(`Naver Maps API error for route ${start} → ${goal}:`, {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message
-        })
-      } else {
-        logger.warn(`Error calculating route ${start} → ${goal}:`, error)
-      }
-
-      return null // Return null instead of throwing so the workflow can continue
+      return null
+    } catch (error: any) {
+      logger.warn(`Error getting route for matrix: ${error}`)
+      return null
     }
   },
 
@@ -255,13 +282,13 @@ export const plannerService = {
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
 
-    state.places.slice(5).forEach((place) => {
-      state.userDestinationMatrix.push({
-        ...place,
-        distance: 0,
-        duration: 0
-      })
-    })
+    // state.places.slice(5).forEach((place) => {
+    //   state.userDestinationMatrix.push({
+    //     ...place,
+    //     distance: 0,
+    //     duration: 0
+    //   })
+    // })
 
     return state
   },
@@ -396,7 +423,8 @@ export const plannerService = {
                           type: 'object',
                           properties: {
                             index: { type: 'number' },
-                            name: { type: 'string' },
+                            nameEN: { type: 'string' },
+                            nameKR: { type: 'string' },
                             type: { type: 'string', enum: ['attraction', 'restaurant'] },
                             start_time: { type: 'string' },
                             end_time: { type: 'string' },
@@ -419,9 +447,6 @@ export const plannerService = {
         },
         {
           headers: {
-            // 'X-NCP-CLOVASTUDIO-API-KEY': process.env.NAVER_CLOVA_API_KEY!,
-            // 'X-NCP-CLOVASTUDIO-API-SECRET': process.env.NAVER_CLOVA_API_SECRET!,
-            // 'X-NCP-CLOVASTUDIO-PROJECT-ID': process.env.NAVER_CLOVA_PROJECT_ID!,
             Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
             'Content-Type': 'application/json'
           }
@@ -438,6 +463,51 @@ export const plannerService = {
     } catch (error) {
       logger.error('Error generating itinerary:', error)
       throw error
+    }
+  },
+
+  async calculateFinalRoute(itineraryJson: string, allPlaces: any[]) {
+    try {
+      const parsed = JSON.parse(itineraryJson)
+      const orderedPoints: string[] = []
+
+      parsed.days.forEach((day: any) => {
+        day.timeline.forEach((item: any) => {
+          let lat = item.lat
+          let lng = item.lng
+
+          if (!lat || !lng) {
+            const found = allPlaces.find((p) => p.name === item.name || p.name.includes(item.name) || (item.nameKR && p.name.includes(item.nameKR)))
+            if (found) {
+              lat = found.lat
+              lng = found.lng
+            }
+          }
+
+          if (lat && lng) {
+            orderedPoints.push(`${lng},${lat}`)
+          }
+        })
+      })
+
+      // Limited 7 points
+      let routePoints = orderedPoints
+      if (orderedPoints.length > 7) {
+        const start = orderedPoints[0]
+        const end = orderedPoints[orderedPoints.length - 1]
+        const middle = orderedPoints.slice(1, -1)
+        const step = Math.ceil(middle.length / 5)
+        const selectedMiddle = middle.filter((_, i) => i % step === 0).slice(0, 5)
+        routePoints = [start, ...selectedMiddle, end]
+      }
+
+      if (routePoints.length < 2) return undefined
+
+      const routeData = await mapperService.getFormattedRoute(routePoints)
+      return routeData || undefined
+    } catch (e) {
+      logger.warn('Auto-route calculation failed', e)
+      return undefined
     }
   },
 
@@ -479,6 +549,23 @@ export const plannerService = {
     state = await this.calculateDistanceFromRestaurants(state)
     state = await this.generateItinerary(state)
 
+    logger.info('Calculating final route data...')
+    const allKnownPlaces = [...state.places, ...state.restaurants]
+    const routeData = await this.calculateFinalRoute(state.itinerary, allKnownPlaces)
+
+    if (routeData && routeData.sections) {
+      const totalSections = routeData.sections.length
+      const firstLegDuration = routeData.sections[0]?.durationMinutes || 0
+
+      logger.info(`--- FINAL ROUTE SECTIONS DATA --- | Total Legs: ${totalSections} | First Leg: ${firstLegDuration} mins`, {
+        totalSections: totalSections,
+        sections: routeData.sections.map((s: any) => ({
+          duration: s.durationMinutes,
+          distance: s.distanceText
+        }))
+      })
+    }
+
     const savedItinerary = await TravelItinerary.create({
       userInput: state.userInput,
       places: state.places,
@@ -486,10 +573,11 @@ export const plannerService = {
       userDestinationMatrix: state.userDestinationMatrix,
       destinationMatrix: state.destinationMatrix,
       restaurantDestinationMatrix: state.restaurantDestinationMatrix,
-      itinerary: state.itinerary
+      itinerary: state.itinerary,
+      routeData: routeData
     })
 
     logger.info(`Itinerary saved with ID: ${savedItinerary._id}`)
-    return state
+    return { ...state, routeData } as any
   }
 }
