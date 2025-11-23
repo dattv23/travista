@@ -28,6 +28,7 @@ export interface IItineraryDocument extends Document {
       end: { lat: number; lng: number }
       distanceText: string
       durationMinutes: number
+      path: [[Number]]
     }>
     path: number[][] // Coordinates to draw map
   }
@@ -118,7 +119,8 @@ const itinerarySchema = new Schema<IItineraryDocument>(
           start: { lat: Number, lng: Number },
           end: { lat: Number, lng: Number },
           distanceText: String,
-          durationMinutes: Number
+          durationMinutes: Number,
+          path: [[Number]]
         }
       ],
       path: [[Number]] // Mảng 2 chiều

@@ -49,7 +49,7 @@ export default function Home() {
           <div className='mt-10 flex flex-col sm:flex-row sm:items-center sm:gap-6'>
             <Link 
               href={`${userLoggedIn ? '/plan' : '/auth/login'}`} 
-              className='inline-block header-h5 px-[46px] py-5 bg-secondary text-light-text rounded-[8px] hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)] transition'
+              className='inline-block text-center header-h5 px-[46px] py-5 bg-secondary text-light-text rounded-[8px] hover:bg-[color-mix(in_srgb,var(--color-secondary),black_10%)] transition'
             >
               Generate
             </Link>
@@ -79,7 +79,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className='w-full flex justify-center mt-[90px]'>
+      <div className='w-full flex justify-center mt-[200px] md:mt-[90px]'>
         <Image
           src={Divider}
           alt='Divider'

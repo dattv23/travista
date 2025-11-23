@@ -44,7 +44,7 @@ export const searchService = {
         }
       })
 
-      let items = res.data?.addresses || []
+      const items = res.data?.addresses || []
 
       // If we got few results with English query, try Korean version if applicable
       if (items.length < 5 && !hasKorean && keyword.length >= 3) {
@@ -64,11 +64,7 @@ export const searchService = {
         hasKorean
       })
 
-      // Log if no results found
-      if (items.length === 0) {
-        logger.warn('No addresses found for keyword', { keyword })
-      } else {
-        // Cache successful results
+      if (items.length > 0) {
         searchCache.set(cacheKey, items)
       }
 
