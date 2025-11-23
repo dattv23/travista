@@ -36,7 +36,7 @@ export const reviewService = {
     logger.info('Crawling naver blog text...')
 
     try {
-      const browser = await chromium.launch({ headless: true, args: ['--disable-blink-features=AutomationControlled'] })
+      const browser = await chromium.launch({ headless: false, args: ['--no-sandbox'] })
       const page = await browser.newPage()
 
       await page.goto(blogUrl, {
