@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: travista-backend
+    env: docker
+    repo: https://github.com/dattv23/travista
+    branch: main
+    plan: starter
+    dockerfilePath: backend/Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
