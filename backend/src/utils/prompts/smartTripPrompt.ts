@@ -19,7 +19,7 @@ ITINERARY RULES:
 5. After the afternoon attractions, choose a second restaurant for DINNER to conclude the day.
 6. Respect user's theme, budget, and group size.
 7. Daily timeline runs ~09:00 to ~19:30.
-8. MUST BE ENGLISH for everything.
+8. Must have descriptions and all MUST BE ENGLISH and put at note.
 9. If coordinates exist in the input, copy them. If missing, set lat/lng to null.
 10. Output MUST be ONLY valid JSON — no explanations, no markdown, no comments.
 
@@ -32,8 +32,8 @@ REQUIRED JSON SCHEMA:
       "timeline": [
         {
           "index": number,
-          "nameEN": string,
-          "nameKR": string,
+          "nameEN": string (MUST BE ENGLISH),
+          "nameKR": string (MUST BE KOREAN),
           "type": "attraction" | "restaurant",
           "start_time": "HH:MM",
           "end_time": "HH:MM",
