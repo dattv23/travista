@@ -1,7 +1,7 @@
 # ============================================================
 # 1) BUILD STAGE (Playwright + Node + Browsers Installed)
 # ============================================================
-FROM mcr.microsoft.com/playwright:v1.46.0-jammy AS builder
+FROM mcr.microsoft.com/playwright:v1.56.1-jammy AS builder
 
 WORKDIR /app
 
@@ -9,9 +9,6 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 RUN npm install
-
-# Install Chromium inside the image
-RUN npx playwright install --with-deps chromium
 
 COPY . .
 
@@ -21,7 +18,7 @@ RUN npx tsc-alias
 # ============================================================
 # 2) RUN STAGE
 # ============================================================
-FROM mcr.microsoft.com/playwright:v1.46.0-jammy
+FROM mcr.microsoft.com/playwright:v1.56.1-jammy
 
 WORKDIR /app
 
