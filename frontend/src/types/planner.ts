@@ -96,6 +96,7 @@ export interface PlannerResponse {
     routes: (RouteInfo & { to: string })[];
   }[];
   itinerary: string;
+  routeData?: RouteData;
 }
 
 export interface MapPin {
@@ -104,4 +105,3 @@ export interface MapPin {
   name?: string;
   type?: 'attraction' | 'restaurant' | 'destination';
 }
-
