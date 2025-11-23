@@ -20,7 +20,6 @@ import {
 import { MapBounds, MapCenterState, MapPoint } from '@/types/map';
 import { mapperService } from '@/services/mapper.service';
 
-
 interface PlanClientUIProps {
   searchParams: {
     location: string;
@@ -66,12 +65,18 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
   const [focusBounds, setFocusBounds] = useState<MapBounds | undefined>(undefined);
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [pendingLocation, setPendingLocation] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [pendingLocation, setPendingLocation] = useState<{
+    name: string;
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [totalDuration, setTotalDuration] = useState<string>('');
 
   // Prevent double fetching
   const hasInitiatedRef = useRef(false);
+  // Track whether we should recalculate route on next itinerary change
+  const shouldRecalculateRouteRef = useRef(false);
 
   // Calculate total itinerary duration
   const calculateTotalDuration = useCallback(() => {
@@ -115,20 +120,28 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       const hours = Math.floor(totalMinutes / 60);
       const mins = totalMinutes % 60;
       const locationCount = itinerary.length;
-      
+
       if (hours > 0) {
-        setTotalDuration(`Est. ${hours} ${hours === 1 ? 'hour' : 'hours'}${mins > 0 ? ` ${mins} min` : ''} (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+        setTotalDuration(
+          `Est. ${hours} ${hours === 1 ? 'hour' : 'hours'}${mins > 0 ? ` ${mins} min` : ''} (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`,
+        );
       } else {
-        setTotalDuration(`Est. ${mins} min (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+        setTotalDuration(
+          `Est. ${mins} min (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`,
+        );
       }
     } else {
       // Fallback if calculation fails
       const locationCount = itinerary.length;
       if (routeSummary?.duration) {
         // Just show route duration if we have it
-        setTotalDuration(`Est. ${routeSummary.duration} (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+        setTotalDuration(
+          `Est. ${routeSummary.duration} (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`,
+        );
       } else {
-        setTotalDuration(`Est. (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`);
+        setTotalDuration(
+          `Est. (${locationCount} ${locationCount === 1 ? 'location' : 'locations'})`,
+        );
       }
     }
   }, [parsedData, routeSummary, itinerary.length]);
@@ -248,10 +261,10 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                 backendRouteData.sections[globalRouteIndex]
               ) {
                 const section = backendRouteData.sections[globalRouteIndex];
-                
+
                 driveDistance = section.distanceText;
                 if ((section as any).path) {
-                    sectionPath = (section as any).path;
+                  sectionPath = (section as any).path;
                 }
               }
               globalRouteIndex++;
@@ -270,7 +283,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               uniqueId: `car-${item.uniqueId}`,
               startCoords: { lat: item.lat, lng: item.lng },
               endCoords: { lat: nextItem.lat, lng: nextItem.lng },
-              sectionPath: sectionPath
+              sectionPath: sectionPath,
             } as any);
           }
         }
@@ -302,22 +315,24 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         }
 
         if (
-          backendRouteData && 
-          backendRouteData.path.length > 0 && 
-          typeof window !== 'undefined' && 
-          window.naver 
+          backendRouteData &&
+          backendRouteData.path.length > 0 &&
+          typeof window !== 'undefined' &&
+          window.naver
         ) {
-          const pathLatLngs = backendRouteData.path.map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng));
-          
-          const markerLatLngs = mapPoints.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
+          const pathLatLngs = backendRouteData.path.map(
+            ([lng, lat]) => new window.naver.maps.LatLng(lat, lng),
+          );
+
+          const markerLatLngs = mapPoints.map((p) => new window.naver.maps.LatLng(p.lat, p.lng));
           const allPoints = [...pathLatLngs, ...markerLatLngs];
 
           if (allPoints.length > 0) {
             const bounds = new window.naver.maps.LatLngBounds(allPoints[0], allPoints[0]);
-            allPoints.forEach(pt => bounds.extend(pt));
-            setInitialMapBounds({ 
-              latLngBounds: bounds, 
-              padding: 100 
+            allPoints.forEach((pt) => bounds.extend(pt));
+            setInitialMapBounds({
+              latLngBounds: bounds,
+              padding: 100,
             });
           }
         }
@@ -353,8 +368,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
       const text = await response.text();
       if (!text) {
-        console.warn("Server returned empty response for summary");
-        return; 
+        console.warn('Server returned empty response for summary');
+        return;
       }
 
       const data = JSON.parse(text);
@@ -366,10 +381,14 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
   };
 
-  const handleAddNewStop = async (newStop: { name: string; lat: number; lng: number }, forceAdd: boolean = false) => {
+  const handleAddNewStop = async (
+    newStop: { name: string; lat: number; lng: number },
+    forceAdd: boolean = false,
+  ) => {
     if (itinerary.length < 2) {
       // Not enough stops to validate, just add it
       setItinerary([...itinerary, { lat: newStop.lat, lng: newStop.lng }]);
+      shouldRecalculateRouteRef.current = true; // Mark that we should recalculate route
       addModal.close();
       setPendingLocation(null);
       setValidationWarning(null);
@@ -380,6 +399,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     // If forcing add (Add Anyway), just add it and close
     if (forceAdd && pendingLocation) {
       setItinerary([...itinerary, { lat: pendingLocation.lat, lng: pendingLocation.lng }]);
+      shouldRecalculateRouteRef.current = true; // Mark that we should recalculate route
       addModal.close();
       setPendingLocation(null);
       setValidationWarning(null);
@@ -394,9 +414,9 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
     try {
       // Convert itinerary to "lng,lat" format
-      const stopList = itinerary.map(point => `${point.lng},${point.lat}`);
+      const stopList = itinerary.map((point) => `${point.lng},${point.lat}`);
       const newStopStr = `${newStop.lng},${newStop.lat}`;
-      
+
       // Insert after the first stop (index 0) as default
       // You can make this configurable later
       const insertAfterIndex = 0;
@@ -411,22 +431,24 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
       if (validation.valid) {
         // Show warning if close to limit (within 1 hour of max) or too far
-        const hoursRemaining = (validation.maxDurationMinutes - validation.totalDurationMinutes) / 60;
+        const hoursRemaining =
+          (validation.maxDurationMinutes - validation.totalDurationMinutes) / 60;
         let warningMsg: string | null = null;
-        
+
         if (hoursRemaining < 1 && hoursRemaining > 0) {
           warningMsg = `Warning: Adding this location will leave only ${hoursRemaining.toFixed(1)} hours available. Total duration: ${(validation.totalDurationMinutes / 60).toFixed(1)} hours.`;
         } else if (validation.totalDistanceKm > 200) {
           // Warn if total distance exceeds 200km
           warningMsg = `Warning: Total distance is ${validation.totalDistanceKm.toFixed(1)} km, which may be too far for a day trip.`;
         }
-        
+
         if (warningMsg) {
           // Show warning but don't add yet - wait for user decision
           setValidationWarning(warningMsg);
         } else {
           // No warning, add immediately and close
           setItinerary([...itinerary, { lat: newStop.lat, lng: newStop.lng }]);
+          shouldRecalculateRouteRef.current = true; // Mark that we should recalculate route
           setTimeout(() => {
             addModal.close();
             setPendingLocation(null);
@@ -435,15 +457,15 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         }
       } else {
         // Show error - exceeds limit, don't allow adding
-        const errorMsg = validation.message || `Cannot add location: itinerary would exceed ${maxDurationHours} hours.`;
+        const errorMsg =
+          validation.message ||
+          `Cannot add location: itinerary would exceed ${maxDurationHours} hours.`;
         setValidationError(errorMsg);
         // Don't add the stop and keep modal open so user can see the error
       }
     } catch (error: any) {
       console.error('Validation error:', error);
-      setValidationError(
-        error.message || 'Failed to validate location. Please try again.'
-      );
+      setValidationError(error.message || 'Failed to validate location. Please try again.');
     } finally {
       setIsValidating(false);
     }
@@ -470,10 +492,10 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
     try {
       // Convert to "lng,lat" format
-      const locationStrings = locations.map(point => `${point.lng},${point.lat}`);
-      
+      const locationStrings = locations.map((point) => `${point.lng},${point.lat}`);
+
       const routeData = await mapperService.drawRoute({
-        locations: locationStrings
+        locations: locationStrings,
       });
 
       if (routeData.success && routeData.data) {
@@ -481,21 +503,23 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
         setRouteSummary({
           distance: routeData.data.summary.distance,
           duration: routeData.data.summary.duration,
-          taxiFare: routeData.data.summary.taxiFare
+          taxiFare: routeData.data.summary.taxiFare,
         });
 
         // Update map bounds to include new location
         if (typeof window !== 'undefined' && window.naver && routeData.data.path.length > 0) {
-          const pathLatLngs = routeData.data.path.map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng));
-          const markerLatLngs = locations.map(p => new window.naver.maps.LatLng(p.lat, p.lng));
+          const pathLatLngs = routeData.data.path.map(
+            ([lng, lat]) => new window.naver.maps.LatLng(lat, lng),
+          );
+          const markerLatLngs = locations.map((p) => new window.naver.maps.LatLng(p.lat, p.lng));
           const allPoints = [...pathLatLngs, ...markerLatLngs];
 
           if (allPoints.length > 0) {
             const bounds = new window.naver.maps.LatLngBounds(allPoints[0], allPoints[0]);
-            allPoints.forEach(pt => bounds.extend(pt));
-            setFocusBounds({ 
-              latLngBounds: bounds, 
-              padding: 100 
+            allPoints.forEach((pt) => bounds.extend(pt));
+            setFocusBounds({
+              latLngBounds: bounds,
+              padding: 100,
             });
           }
         }
@@ -506,20 +530,44 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
   };
 
-  // Recalculate route when itinerary changes (user adds new stop)
+  // Recalculate route only when user actually adds a new stop
   useEffect(() => {
-    // Only recalculate if we have at least 2 points and it's not the initial load
-    if (itinerary.length >= 2 && hasInitiatedRef.current) {
+    // Only recalculate if flag is set and we have at least 2 points
+    if (shouldRecalculateRouteRef.current && itinerary.length >= 2) {
+      shouldRecalculateRouteRef.current = false; // Reset flag
       recalculateRoute(itinerary);
     }
-  }, [itinerary.length]); // Only trigger when number of locations changes
+  }, [itinerary]);
 
   const handlePlanCardClick = (lat: number, lng: number, name: string) => {
-    console.log(name, lat, lng)
-    setMapCenterState({ lat, lng, zoom: 20 }); 
+    console.log(name, lat, lng);
+    setMapCenterState({ lat, lng, zoom: 20 });
     summaryModal.open();
     if (name) {
       handleGetSummary(name);
+    }
+  };
+
+  const handleDrivingClick = (sectionPath?: number[][]) => {
+    if (!sectionPath || sectionPath.length === 0) {
+      console.warn('This driving section has no path');
+      setActiveSegmentPath(undefined);
+      return;
+    }
+
+    setActiveSegmentPath(sectionPath);
+
+    // Auto zoom map to fit the driving segment
+    if (typeof window !== 'undefined' && window.naver) {
+      const latLngs = sectionPath.map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng));
+      if (latLngs.length > 0) {
+        const bounds = new window.naver.maps.LatLngBounds(latLngs[0], latLngs[0]);
+        latLngs.forEach((p) => bounds.extend(p));
+        setFocusBounds({
+          latLngBounds: bounds,
+          padding: 100,
+        });
+      }
     }
   };
 
@@ -547,7 +595,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                 <p className="paragraph-p3-medium text-dark-text">{searchParams.theme} itinerary</p>
                 <p className="paragraph-p3-medium text-sub-text">Start date: {searchParams.date}</p>
                 <p className="paragraph-p3-medium text-sub-text">
-                  {totalDuration || `Est. (${itinerary.length} ${itinerary.length === 1 ? 'location' : 'locations'})`}
+                  {totalDuration ||
+                    `Est. (${itinerary.length} ${itinerary.length === 1 ? 'location' : 'locations'})`}
                 </p>
               </div>
               <div className="flex flex-col gap-2">
@@ -597,18 +646,25 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               </div>
             )}
 
-            {!isLoading && !error && parsedData &&
+            {!isLoading &&
+              !error &&
+              parsedData &&
               parsedData.days.map((day, dayIdx) => (
                 <div key={`day-${dayIdx}`} className="flex flex-col gap-3">
                   {/* Timeline Items */}
                   {day.timeline.map((item, idx) => (
                     <div
                       key={`timeline-item-${dayIdx}-${idx}`}
-                      className="w-full rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md cursor-pointer"
+                      className="w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md"
                       onClick={() => {
-                        if (item.lat && item.lng) {
-                          const searchName = (item as any).nameKR || item.nameEN || '';
-                          handlePlanCardClick(item.lat, item.lng, searchName);
+                        if (item.type === 'car') {
+                          // 👉 Click vào Driving → highlight đoạn đường
+                          handleDrivingClick((item as any).sectionPath);
+                        } else {
+                          if (item.lat && item.lng) {
+                            const searchName = (item as any).nameKR || item.nameEN || '';
+                            handlePlanCardClick(item.lat, item.lng, searchName);
+                          }
                         }
                       }}
                     >
@@ -635,11 +691,11 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
             isLoading={isLoadingSummary}
             data={summaryData}
           />
-          <DynamicNaverMap 
-            path={itinerary} 
-            polylinePath={routePath} 
+          <DynamicNaverMap
+            path={itinerary}
+            polylinePath={routePath}
             activePolylinePath={activeSegmentPath}
-            center={mapCenterState} 
+            center={mapCenterState}
             initialBounds={initialMapBounds}
             focusBounds={focusBounds}
           />
@@ -648,8 +704,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
       {addModal.isOpen && (
         <div className="bg-dark-text/20 fixed inset-0 z-50 flex items-center justify-center">
-          <AddModal 
-            isOpen={addModal.isOpen} 
+          <AddModal
+            isOpen={addModal.isOpen}
             onClose={() => {
               addModal.close();
               setValidationWarning(null);
