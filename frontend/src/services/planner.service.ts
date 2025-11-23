@@ -10,7 +10,7 @@ export const plannerService = {
         `${process.env.NEXT_PUBLIC_NODE_API_URL}/api/planner/create-itinerary`,
         request,
         {
-          timeout: 24000,
+          timeout: 50000, // 50 seconds 
         }
       ); 
 
