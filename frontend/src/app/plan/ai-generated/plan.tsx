@@ -19,6 +19,7 @@ import {
 } from '@/types/planner';
 import { MapBounds, MapCenterState, MapPoint } from '@/types/map';
 import { mapperService } from '@/services/mapper.service';
+import { useRouter } from 'next/navigation';
 
 interface PlanClientUIProps {
   searchParams: {
@@ -342,6 +343,23 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
   }, [plannerItinerary]);
 
+  const router = useRouter();
+
+  const handleBack = () => {
+    const query = new URLSearchParams({
+      location: searchParams.location,
+      lat: searchParams.lat ?? '',
+      lng: searchParams.lng ?? '',
+      date: searchParams.date,
+      duration: searchParams.duration,
+      people: searchParams.people,
+      budget: searchParams.budget,
+      theme: searchParams.theme,
+    });
+
+    router.push(`/plan?${query.toString()}`);
+  };
+
   const handleRetry = () => {
     console.log('Retrying generation...');
     generatePlan();
@@ -571,6 +589,25 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
   };
 
+  const handleShowSuggestedRoute = () => {
+    setActiveSegmentPath(undefined);
+
+    if (typeof window !== 'undefined' && window.naver && routePath.length > 0) {
+      const pathLatLngs = routePath.map(([lng, lat]) => new window.naver.maps.LatLng(lat, lng));
+      const markerLatLngs = itinerary.map((p) => new window.naver.maps.LatLng(p.lat, p.lng));
+      const allPoints = [...pathLatLngs, ...markerLatLngs];
+
+      if (allPoints.length > 0) {
+        const bounds = new window.naver.maps.LatLngBounds(allPoints[0], allPoints[0]);
+        allPoints.forEach((pt) => bounds.extend(pt));
+        setFocusBounds({
+          latLngBounds: bounds,
+          padding: 100,
+        });
+      }
+    }
+  };
+
   return (
     <>
       <section className="flex min-h-screen w-full pt-[92px]">
@@ -581,12 +618,12 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
             <div>
               {/* buttons */}
               <div className="mb-4">
-                <Link
-                  href={''}
+                <button
+                  onClick={handleBack}
                   className="text-primary flex max-w-max items-center justify-center rounded-full p-2 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)] hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)]"
                 >
                   <ArrowCircleLeft />
-                </Link>
+                </button>
               </div>
               <p className="paragraph-p1-semibold text-dark-text">Your Itinerary</p>
             </div>
@@ -610,9 +647,14 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
             <div className="mt-5 flex justify-between">
               <button></button>
               <div className="paragraph-p3-medium flex gap-5">
-                <button className="text-primary border-primary cursor-pointer rounded-[8px] border-2 bg-transparent p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]">
-                  Edit plan
-                </button>
+                {activeSegmentPath && (
+                  <button
+                    className="text-primary border-primary cursor-pointer rounded-[8px] border-2 bg-transparent p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]"
+                    onClick={handleShowSuggestedRoute}
+                  >
+                    Show all paths
+                  </button>
+                )}
                 <button
                   className="bg-primary text-light-text border-primary cursor-pointer rounded-[8px] border-2 p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
                   onClick={addModal.open}

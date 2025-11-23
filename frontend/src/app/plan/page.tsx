@@ -20,7 +20,8 @@ import {
   KeyboardArrowUpOutlined,
 } from '@mui/icons-material';
 import SearchLocationInput from '@/components/ui/searchLocationInput';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { parseDDMMYYYY } from '@/lib/utils';
 
 const questions = [
   {
@@ -113,6 +114,50 @@ export default function Plan() {
     return initialAnswers;
   });
 
+  const params = useSearchParams();
+
+  useEffect(() => {
+    if (!params) return;
+
+    const location = params.get('location');
+    const lat = params.get('lat');
+    const lng = params.get('lng');
+    const date = params.get('date');
+    const duration = params.get('duration');
+    const people = params.get('people');
+    const budget = params.get('budget');
+    const theme = params.get('theme');
+
+    setAnswers((prev) => ({
+      ...prev,
+      0: location || prev[0],
+      1: date || prev[1],
+      2: duration ? `${duration} day` : prev[2],
+      3: people || prev[3],
+      4: budget || prev[4],
+      5: theme || prev[5],
+    }));
+
+    if (lat && lng && location) {
+      console.log('Lat: ', lat);
+      console.log('Lng: ', lng);
+      console.log('Location: ', location);
+
+      setSelectedLocation({
+        name: location,
+        lat: parseFloat(lat),
+        lng: parseFloat(lng),
+      });
+    }
+
+    if (date) {
+      const parsed = parseDDMMYYYY(date);
+      if (parsed!.toString() !== 'Invalid Date') {
+        setSelectedDate(parsed);
+      }
+    }
+  }, [params]);
+
   useEffect(() => {
     console.log({ answers, selectedLocation });
   }, [answers, selectedLocation]);
@@ -187,7 +232,7 @@ export default function Plan() {
 
   return (
     <>
-      <section className="min-h-screen w-full px-4 pt-[108px] md:px-5 xl:px-8 2xl:px-[220px] flex">
+      <section className="flex min-h-screen w-full px-4 pt-[108px] md:px-5 xl:px-8 2xl:px-[220px]">
         {/* Left section */}
         <div className="w-full lg:w-1/2">
           {/* Title */}
@@ -246,6 +291,7 @@ export default function Plan() {
                       ) : question.type === 'search' ? (
                         <>
                           <SearchLocationInput
+                            value={selectedLocation?.name || ''}
                             onSelect={handleLocationSelect}
                             error={locationError}
                           />
@@ -313,12 +359,12 @@ export default function Plan() {
         </div>
 
         {/* Image */}
-        <div className="hidden lg:flex w-1/2 items-center justify-center p-8">
+        <div className="hidden w-1/2 items-center justify-center p-8 lg:flex">
           <Image
             src={Illsutrator}
-            alt='Illustrator'
+            alt="Illustrator"
             priority
-            className='max-w-full h-auto object-contain'
+            className="h-auto max-w-full object-contain"
           />
         </div>
       </section>
