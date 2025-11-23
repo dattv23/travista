@@ -72,36 +72,50 @@ export const mapperController = {
 
       const routeKey = Object.keys(result.route)[0]
       const route = result.route[routeKey][0]
+      const fullPath = route.path || []
+
+      // Build sections based on number of locations, not API sections
+      const expectedSections = locations.length - 1
+      const apiSections = route.section || []
 
       let sections = []
 
-      if (route.section && Array.isArray(route.section)) {
-        sections = route.section.map((sec: any, index: number) => {
-          const startCoords = locations[index].split(',').map(Number)
-          const endCoords = locations[index + 1].split(',').map(Number)
+      for (let i = 0; i < expectedSections; i++) {
+        const startCoords = locations[i].split(',').map(Number)
+        const endCoords = locations[i + 1].split(',').map(Number)
 
-          return {
-            pointIndex: sec.pointIndex,
-            start: { lng: startCoords[0], lat: startCoords[1] },
-            end: { lng: endCoords[0], lat: endCoords[1] },
-            distanceText: `${(sec.distance / 1000).toFixed(1)} km`,
-            durationMinutes: Math.round(sec.duration / 60000)
-          }
+        const apiSec = apiSections[i] // might be undefined if API did not return enough sections
+        let sectionPath = []
+        let durationMs = 0
+        let distanceMeters = 0
+
+        if (apiSec) {
+          // Use API section data when available
+          durationMs = apiSec.duration || 0
+          distanceMeters = apiSec.distance || 0
+
+          const nextPointIndex = apiSections[i + 1]?.pointIndex
+          sectionPath = mapperService.getPathForSection(fullPath, apiSec.pointIndex, nextPointIndex)
+        } else {
+          // API DOES NOT provide enough sections → manually fetch segment
+          const start = locations[i]
+          const goal = locations[i + 1]
+
+          const segInfo = await mapperService.getDirections(start, goal)
+
+          durationMs = (segInfo?.duration ?? 0) * 60000
+          distanceMeters = segInfo?.distance ?? 0
+          sectionPath = segInfo?.path ?? []
+        }
+
+        sections.push({
+          index: i + 1,
+          start: { lng: startCoords[0], lat: startCoords[1] },
+          end: { lng: endCoords[0], lat: endCoords[1] },
+          distanceText: `${(distanceMeters / 1000).toFixed(1)} km`,
+          durationMinutes: Math.ceil(durationMs / 60000),
+          path: sectionPath
         })
-      } else {
-        // Start -> Goal
-        const startCoords = locations[0].split(',').map(Number)
-        const endCoords = locations[locations.length - 1].split(',').map(Number)
-
-        sections = [
-          {
-            pointIndex: 0,
-            start: { lng: startCoords[0], lat: startCoords[1] },
-            end: { lng: endCoords[0], lat: endCoords[1] },
-            distanceText: `${(route.summary.distance / 1000).toFixed(1)} km`,
-            durationMinutes: Math.round(route.summary.duration / 60000)
-          }
-        ]
       }
 
       res.status(200).json({
@@ -115,8 +129,7 @@ export const mapperController = {
             fuelPrice: route.summary.fuelPrice
           },
           sections: sections,
-          path: route.path,
-          guide: route.guide
+          path: route.path
         }
       })
     } catch (error: any) {
@@ -131,14 +144,7 @@ export const mapperController = {
   // POST /validate-itinerary-duration - Validate duration/distance when adding new stop
   async validateItineraryDuration(req: Request, res: Response) {
     try {
-      const { 
-        stopList, 
-        newStop, 
-        insertAfterIndex = 0, 
-        maxDurationHours = 12, 
-        existingSegmentDurations,
-        existingSegmentDistances
-      } = req.body
+      const { stopList, newStop, insertAfterIndex = 0, maxDurationHours = 12, existingSegmentDurations, existingSegmentDistances } = req.body
 
       if (!stopList || !Array.isArray(stopList) || stopList.length < 2) {
         return res.status(400).json({
@@ -171,14 +177,7 @@ export const mapperController = {
         })
       }
 
-      const result = await mapperService.validateItineraryDuration(
-        stopList,
-        newStop,
-        insertAfterIndex,
-        maxDurationHours,
-        existingSegmentDurations,
-        existingSegmentDistances
-      )
+      const result = await mapperService.validateItineraryDuration(stopList, newStop, insertAfterIndex, maxDurationHours, existingSegmentDurations, existingSegmentDistances)
 
       res.status(200).json({
         success: true,

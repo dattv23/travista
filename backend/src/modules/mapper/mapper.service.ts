@@ -28,6 +28,21 @@ export const mapperService = {
     }
   },
 
+  /**
+   * Extract path for a specific section from the full route path
+   * pointIndex indicates the starting point in the full path array
+   * The path for this section goes from pointIndex to the next section's pointIndex (or end of path)
+   */
+  getPathForSection(fullPath: any[], currentPointIndex: number, nextPointIndex?: number): any[] {
+    if (!fullPath || fullPath.length === 0) return []
+
+    // If nextPointIndex exists, use it as the end boundary (exclusive)
+    // Otherwise, use the full length of the path (last section)
+    const endIndex = nextPointIndex !== undefined ? nextPointIndex : fullPath.length
+
+    return fullPath.slice(currentPointIndex, endIndex)
+  },
+
   async getFormattedRoute(locations: string[]) {
     if (locations.length < 2) return null
 
@@ -51,43 +66,44 @@ export const mapperService = {
 
     const routeKey = Object.keys(rawData.route)[0]
     const route = rawData.route[routeKey][0]
+    const fullPath = route.path || []
+
+    // Build sections based on number of locations, not API sections
+    const expectedSections = locations.length - 1
+    const apiSections = route.section || []
 
     let sections = []
-    if (route.section && Array.isArray(route.section)) {
-      sections = route.section.map((sec: any, index: number) => {
-        const startCoords = locations[index].split(',').map(Number)
-        const endCoords = locations[index + 1].split(',').map(Number)
 
-        const durationMs = sec.duration || 0
-        const distanceMeters = sec.distance || 0
+    for (let i = 0; i < expectedSections; i++) {
+      const start = locations[i]
+      const goal = locations[i + 1]
 
-        logger.info('Duration Ms: ', durationMs)
+      const [startLng, startLat] = start.split(',').map(Number)
+      const [endLng, endLat] = goal.split(',').map(Number)
 
-        return {
-          pointIndex: sec.pointIndex,
-          start: { lng: startCoords[0], lat: startCoords[1] },
-          end: { lng: endCoords[0], lat: endCoords[1] },
-          distanceText: `${(distanceMeters / 1000).toFixed(1)} km`,
+      const segResult = await this.getDirections(start, goal, undefined, 'trafast')
 
-          durationMinutes: Math.ceil(durationMs / 60000) || 0
-        }
+      let distanceMeters = 0
+      let durationMs = 0
+      let sectionPath: any[] = []
+
+      if (segResult?.route) {
+        const routeKey = Object.keys(segResult.route)[0]
+        const route = segResult.route[routeKey][0]
+
+        distanceMeters = route?.summary?.distance ?? 0
+        durationMs = route?.summary?.duration ?? 0
+        sectionPath = route?.path ?? []
+      }
+
+      sections.push({
+        index: i + 1,
+        start: { lng: startLng, lat: startLat },
+        end: { lng: endLng, lat: endLat },
+        distanceText: `${(distanceMeters / 1000).toFixed(1)} km`,
+        durationMinutes: Math.ceil(durationMs / 60000),
+        path: sectionPath
       })
-    } else {
-      const startCoords = locations[0].split(',').map(Number)
-      const endCoords = locations[locations.length - 1].split(',').map(Number)
-
-      const totalDurationMs = route.summary.duration || 0
-      const totalDistanceMeters = route.summary.distance || 0
-
-      sections = [
-        {
-          pointIndex: 0,
-          start: { lng: startCoords[0], lat: startCoords[1] },
-          end: { lng: endCoords[0], lat: endCoords[1] },
-          distanceText: `${(totalDistanceMeters / 1000).toFixed(1)} km`,
-          durationMinutes: Math.round(totalDurationMs / 60000) || 0
-        }
-      ]
     }
 
     const summaryDuration = route.summary.duration || 0
@@ -134,10 +150,10 @@ export const mapperService = {
   },
 
   // Get segment duration and distance from Naver Maps API
-  async getSegmentInfo(start: string, goal: string): Promise<{ duration: number; distance: number } | null> {
+  async getSegmentInfo(start: string, goal: string): Promise<{ duration: number; distance: number; path?: any[] } | null> {
     try {
       const result = await this.getDirections(start, goal, undefined, 'trafast')
-      
+
       if (result.code !== 0 || !result.route) {
         logger.warn(`Failed to get route for ${start} → ${goal}`)
         return null
@@ -145,14 +161,15 @@ export const mapperService = {
 
       const routeKey = Object.keys(result.route)[0]
       const route = result.route[routeKey]?.[0]
-      
+
       if (!route?.summary) {
         return null
       }
 
       return {
         duration: Math.round(route.summary.duration / 60000),
-        distance: route.summary.distance
+        distance: route.summary.distance,
+        path: route.path || []
       }
     } catch (error) {
       logger.error(`Error calculating segment info ${start} → ${goal}:`, error)
@@ -185,11 +202,11 @@ export const mapperService = {
     newSegmentDistanceMeters?: number
     segmentDurations: number[]
     segmentDistances: number[]
-    segmentDetails: Array<{ duration: number; distance: number }>
+    segmentDetails: Array<{ duration: number; distance: number; path?: any[] }>
     message: string
   }> {
     const MAX_DURATION_MINUTES = maxDurationHours * 60
-    
+
     logger.info('Validating itinerary duration', {
       stopListLength: stopList.length,
       insertAfterIndex,
@@ -208,19 +225,21 @@ export const mapperService = {
     const start = stopList[insertAfterIndex]
     const nextStop = stopList[insertAfterIndex + 1]
     logger.info(`Calculating new route: ${start} → ${newStop} → ${nextStop}`)
-    
+
     let newSegmentDurationMinutes: number | null = null
     let newSegmentDistanceMeters: number | null = null
+    let newSegmentPath: any[] = []
     try {
       const routeResult = await this.getDirections(start, nextStop, newStop, 'trafast')
-      
+
       if (routeResult.code === 0 && routeResult.route) {
         const routeKey = Object.keys(routeResult.route)[0]
         const route = routeResult.route[routeKey]?.[0]
-        
+
         if (route?.summary) {
           newSegmentDurationMinutes = Math.round(route.summary.duration / 60000)
           newSegmentDistanceMeters = route.summary.distance
+          newSegmentPath = route.path || []
           if (newSegmentDistanceMeters !== null) {
             logger.info(`New segment - Duration: ${newSegmentDurationMinutes} minutes, Distance: ${(newSegmentDistanceMeters / 1000).toFixed(2)} km`)
           } else {
@@ -242,7 +261,7 @@ export const mapperService = {
         segmentDurations: [],
         segmentDistances: [],
         segmentDetails: [],
-        message: 'Failed to calculate route for new segment. Please try again.',
+        message: 'Failed to calculate route for new segment. Please try again.'
       }
     }
 
@@ -250,10 +269,9 @@ export const mapperService = {
     const newSegmentDistance = newSegmentDistanceMeters
     const remainingSegmentDurations: number[] = []
     const remainingSegmentDistances: number[] = []
-    const remainingSegmentDetails: Array<{ duration: number; distance: number }> = []
-    
-    if (existingSegmentDurations && existingSegmentDurations.length > 0 && 
-        existingSegmentDistances && existingSegmentDistances.length > 0) {
+    const remainingSegmentDetails: Array<{ duration: number; distance: number; path?: any[] }> = []
+
+    if (existingSegmentDurations && existingSegmentDurations.length > 0 && existingSegmentDistances && existingSegmentDistances.length > 0) {
       logger.info('Using provided existing segment durations and distances')
       remainingSegmentDurations.push(...existingSegmentDurations)
       remainingSegmentDistances.push(...existingSegmentDistances)
@@ -268,9 +286,9 @@ export const mapperService = {
       for (let i = insertAfterIndex + 1; i < stopList.length - 1; i++) {
         const segmentStart = stopList[i]
         const segmentGoal = stopList[i + 1]
-        
+
         const segmentInfo = await this.getSegmentInfo(segmentStart, segmentGoal)
-        
+
         if (segmentInfo !== null) {
           remainingSegmentDurations.push(segmentInfo.duration)
           remainingSegmentDistances.push(segmentInfo.distance)
@@ -281,18 +299,15 @@ export const mapperService = {
           remainingSegmentDistances.push(10000)
           remainingSegmentDetails.push({ duration: 30, distance: 10000 })
         }
-        
-        await new Promise(resolve => setTimeout(resolve, 100))
+
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
     }
 
     const allSegmentDurations = [newSegmentDuration, ...remainingSegmentDurations]
     const allSegmentDistances = [newSegmentDistance, ...remainingSegmentDistances]
-    const allSegmentDetails = [
-      { duration: newSegmentDuration, distance: newSegmentDistance },
-      ...remainingSegmentDetails
-    ]
-    
+    const allSegmentDetails = [{ duration: newSegmentDuration, distance: newSegmentDistance, path: newSegmentPath }, ...remainingSegmentDetails]
+
     const totalDurationMinutes = allSegmentDurations.reduce((sum, dur) => sum + dur, 0)
     const totalDistanceMeters = allSegmentDistances.reduce((sum, dist) => sum + dist, 0)
     const totalDistanceKm = totalDistanceMeters / 1000
@@ -301,7 +316,7 @@ export const mapperService = {
       newSegmentDuration: newSegmentDuration,
       newSegmentDistance: `${(newSegmentDistance / 1000).toFixed(2)} km`,
       remainingSegmentDurations,
-      remainingSegmentDistances: remainingSegmentDistances.map(d => `${(d / 1000).toFixed(2)} km`),
+      remainingSegmentDistances: remainingSegmentDistances.map((d) => `${(d / 1000).toFixed(2)} km`),
       totalDurationMinutes,
       totalDistanceKm: totalDistanceKm.toFixed(2),
       maxDurationMinutes: MAX_DURATION_MINUTES
@@ -321,7 +336,7 @@ export const mapperService = {
         segmentDurations: allSegmentDurations,
         segmentDistances: allSegmentDistances,
         segmentDetails: allSegmentDetails,
-        message: `Itinerary exceeds time limit of ${maxDurationHours} hours by ${exceededBy} minutes. Total: ${totalDurationMinutes} minutes (${totalDistanceKm.toFixed(2)} km).`,
+        message: `Itinerary exceeds time limit of ${maxDurationHours} hours by ${exceededBy} minutes. Total: ${totalDurationMinutes} minutes (${totalDistanceKm.toFixed(2)} km).`
       }
     }
 
@@ -336,7 +351,7 @@ export const mapperService = {
       segmentDurations: allSegmentDurations,
       segmentDistances: allSegmentDistances,
       segmentDetails: allSegmentDetails,
-      message: `Valid itinerary. Total duration: ${totalDurationMinutes} minutes (${(totalDurationMinutes / 60).toFixed(1)} hours). Total distance: ${totalDistanceKm.toFixed(2)} km.`,
+      message: `Valid itinerary. Total duration: ${totalDurationMinutes} minutes (${(totalDurationMinutes / 60).toFixed(1)} hours). Total distance: ${totalDistanceKm.toFixed(2)} km.`
     }
   }
 }

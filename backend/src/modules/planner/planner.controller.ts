@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios' // 1. Import isAxiosError
 import { plannerService } from './planner.service'
 import { IUserInput } from './planner.validation'
 import { logger } from '@/config/logger'
+import { TravelItinerary } from './planner.model'
 
 export const plannerController = {
   async createItinerary(req: Request, res: Response) {
@@ -35,4 +36,32 @@ export const plannerController = {
       })
     }
   }
+  // async createItineraryMockDB(req: Request, res: Response) {
+  //   try {
+  //     const data = await TravelItinerary.findOne({ _id: '6922622a8126297eada5a3a2' })
+  //     res.status(200).json(data)
+  //   } catch (error: unknown) {
+  //     logger.error('Controller Error:', error)
+
+  //     // Default values
+  //     let status = 500
+  //     let message: string = 'Internal Server Error'
+
+  //     // Axios Error (Network/API errors)
+  //     if (isAxiosError(error)) {
+  //       status = error.response?.status || 500
+  //       message = error.response?.data || error.message
+  //     }
+  //     // Standard JavaScript Error
+  //     else if (error instanceof Error) {
+  //       message = error.message
+  //     }
+
+  //     res.status(status).json({
+  //       success: false,
+  //       message: 'External API Error',
+  //       details: message
+  //     })
+  //   }
+  // }
 }
