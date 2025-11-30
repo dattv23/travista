@@ -1,27 +1,30 @@
-# ============================================================
-# 1) BUILD STAGE (Playwright + Node + Browsers Installed)
-# ============================================================
-FROM mcr.microsoft.com/playwright:v1.56.1-jammy AS builder
+# ===============================
+# 1) BUILD STAGE
+# ===============================
+FROM node:18-bullseye AS builder
 
 WORKDIR /app
 
+# Copy package files first (layer caching)
 COPY package*.json ./
-COPY tsconfig.json ./
 
+# Install dependencies
 RUN npm install
 
+# Copy source code
 COPY . .
 
+# Build TypeScript
 RUN npm run build
-RUN npx tsc-alias
 
-# ============================================================
+# ===============================
 # 2) RUN STAGE
-# ============================================================
-FROM mcr.microsoft.com/playwright:v1.56.1-jammy
+# ===============================
+FROM node:18-bullseye
 
 WORKDIR /app
 
+# Copy production files
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist

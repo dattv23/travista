@@ -70,7 +70,7 @@ export const reviewService = {
 
       return ''
     } catch (err) {
-      console.error('Error crawling Naver blog WITHOUT Playwright:', err)
+      logger.error('Error crawling Naver blog:', err)
       return ''
     }
   },
