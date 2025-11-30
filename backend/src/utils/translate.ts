@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+export const isKorean = (str: string) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(str)
+
 export const translateKoreanToEnglish = async (text: string): Promise<string> => {
   const response = await axios.post(
     'https://papago.apigw.ntruss.com/nmt/v1/translation',
