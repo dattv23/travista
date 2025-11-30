@@ -11,10 +11,16 @@ export const mapperService = {
    */
   async getDirections(start: string, goal: string, waypoints?: string, option: string = 'trafast') {
     const params: any = { start, goal, option }
-    if (waypoints) params.waypoints = waypoints
+    let endpoint: string = ''
+    if (waypoints) {
+      params.waypoints = waypoints
+      endpoint = 'map-direction-15/v1/driving'
+    } else {
+      endpoint = 'map-direction/v1/driving'
+    }
 
     try {
-      const response = await axios.get('https://maps.apigw.ntruss.com/map-direction-15/v1/driving', {
+      const response = await axios.get(`https://maps.apigw.ntruss.com/${endpoint}`, {
         params,
         headers: {
           'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
@@ -124,15 +130,15 @@ export const mapperService = {
   /**
    * Create route through multiple locations
    * Takes array of "lng,lat" strings and creates route with waypoints
-   * Max 7 locations: start + 5 waypoints + goal
+   * Max 10 locations: start + 5 waypoints + goal
    */
   async createRouteFromLocations(locations: string[]) {
     if (locations.length < 2) {
       throw new Error('Need at least 2 locations')
     }
 
-    if (locations.length > 7) {
-      throw new Error('Maximum 7 locations (start + 5 waypoints + goal)')
+    if (locations.length > 10) {
+      throw new Error('Maximum 10 locations (start + 8 waypoints + goal)')
     }
 
     const start = locations[0]
