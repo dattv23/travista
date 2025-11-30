@@ -1,7 +1,6 @@
 'use client';
 
 import { ArrowCircleLeft } from '@mui/icons-material';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AddModal } from '@/components/ui/addModal';
@@ -20,6 +19,7 @@ import {
 import { MapBounds, MapCenterState, MapPoint } from '@/types/map';
 import { mapperService } from '@/services/mapper.service';
 import { useRouter } from 'next/navigation';
+import { Loader2, Map } from 'lucide-react';
 
 interface PlanClientUIProps {
   searchParams: {
@@ -52,7 +52,7 @@ const timeToMinutes = (timeStr: string): number => {
 };
 
 export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIProps) {
-  const { isLoading, error, itinerary: plannerItinerary, pins, createItinerary } = usePlanner();
+  const { isLoading, error, itinerary: plannerItinerary, createItinerary } = usePlanner();
   const addModal = useModal();
   const summaryModal = useModal();
 
@@ -248,7 +248,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
 
             const durationMins = timeToMinutes(driveEndTime) - timeToMinutes(driveStartTime);
 
-            console.log('Duration: ', durationMins);
+            // console.log('Duration: ', durationMins);
 
             let sectionPath: number[][] | undefined = undefined;
             let driveDistance = '';
@@ -464,9 +464,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           // Show warning but don't add yet - wait for user decision
           setValidationWarning(warningMsg);
         } else {
-          // No warning, add immediately and close
           setItinerary([...itinerary, { lat: newStop.lat, lng: newStop.lng }]);
-          shouldRecalculateRouteRef.current = true; // Mark that we should recalculate route
+          shouldRecalculateRouteRef.current = true; 
           setTimeout(() => {
             addModal.close();
             setPendingLocation(null);
@@ -479,7 +478,6 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           validation.message ||
           `Cannot add location: itinerary would exceed ${maxDurationHours} hours.`;
         setValidationError(errorMsg);
-        // Don't add the stop and keep modal open so user can see the error
       }
     } catch (error: any) {
       console.error('Validation error:', error);
@@ -668,8 +666,18 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-10">
             {isLoading && (
-              <div className="w-full p-4 text-center">
-                <p className="text-sub-text">Generating your {searchParams.theme} itinerary...</p>
+              <div className="w-full p-8 flex flex-col items-center justify-center gap-4">
+                <div className="relative flex items-center justify-center">
+                  {/* Spinning Ring */}
+                  <Loader2 className="w-12 h-12 bg-[linear-gradient(90deg,#ff0087,#af52fe,#498efe,#00e9fe)] bg-clip-text text-transparent animate-spin" />
+                  
+                  {/* Static Icon inside the spinner */}
+                  <Map className="w-5 h-5 text-primary absolute" />
+                </div>
+
+                <p className="bg-[linear-gradient(90deg,#ff0087,#af52fe,#498efe,#00e9fe)] bg-clip-text text-transparent paragraph-p2-medium animate-pulse">
+                  Generating your {searchParams.theme} itinerary...
+                </p>
               </div>
             )}
 
@@ -700,7 +708,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                       className="w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md"
                       onClick={() => {
                         if (item.type === 'car') {
-                          // 👉 Click vào Driving → highlight đoạn đường
+                          // Click vào Driving → highlight đoạn đường
                           handleDrivingClick((item as any).sectionPath);
                         } else {
                           if (item.lat && item.lng) {
