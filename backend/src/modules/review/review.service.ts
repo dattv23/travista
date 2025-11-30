@@ -1,8 +1,19 @@
+import axios from 'axios'
+import pLimit from 'p-limit'
+import * as cheerio from 'cheerio'
+
 import { logger } from '@/config/logger'
 import { cleanText } from '@/utils/cleanText'
-import axios from 'axios'
-import * as cheerio from 'cheerio'
-import { chromium } from 'playwright'
+import { translateKoreanToEnglish } from '@/utils/translate'
+
+const limit = pLimit(3)
+
+const AXIOS_CONFIG = {
+  timeout: 10000, // 10s fail fast
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'
+  }
+}
 
 export const reviewService = {
   async getLinkBlogs(locationName: string) {
@@ -18,7 +29,8 @@ export const reviewService = {
         headers: {
           'X-Naver-Client-Id': `${process.env.X_NAVER_CLIENT_ID!}`,
           'X-Naver-Client-Secret': `${process.env.X_NAVER_CLIENT_SECRET!}`
-        }
+        },
+        timeout: 8000
       })
 
       const items = res.data.items.map((item: { title: string; link: string }) => ({
@@ -32,76 +44,57 @@ export const reviewService = {
       throw error
     }
   },
-  async getNaverBlogText(blogUrl: string) {
+  async crawlBlog(blogUrl: string) {
     logger.info('Crawling naver blog text...')
 
     try {
-      const browser = await chromium.launch({ headless: false, args: ['--no-sandbox'] })
-      const page = await browser.newPage()
+      const mainRes = await axios.get(blogUrl)
+      let $ = cheerio.load(mainRes.data)
 
-      await page.goto(blogUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: 30000
-      })
+      let content = $('[id^="post-view"]').text().trim() || $('#postViewArea').text().trim()
 
-      const iframeSrc = await page.evaluate(() => {
-        const iframe = document.querySelector('#mainFrame')
-        return iframe ? iframe.getAttribute('src') : null
-      })
+      if (content) return content
 
+      const iframeSrc = $('#mainFrame').attr('src')
       if (iframeSrc) {
-        const iframeUrl = 'https://blog.naver.com' + iframeSrc
+        const realUrl = iframeSrc.startsWith('http') ? iframeSrc : `https://blog.naver.com${iframeSrc}`
 
-        await page.goto(iframeUrl, {
-          waitUntil: 'domcontentloaded',
-          timeout: 30000
-        })
+        const iframeRes = await axios.get(realUrl, AXIOS_CONFIG)
 
-        const iframeHtml = await page.content()
-        const $ = cheerio.load(iframeHtml)
+        $ = cheerio.load(iframeRes.data)
 
-        // Editor 2.0
-        let content = $('[id^="post-view"]').text().trim()
-        if (content) return content
+        content = $('[id^="post-view"]').text().trim() || $('#postViewArea').text().trim()
 
-        // Editor 1.0
-        content = $('#postViewArea').text().trim()
         if (content) return content
       }
 
-      const html = await page.content()
-      const $ = cheerio.load(html)
-
-      let content = $('[id^="post-view"]').text().trim()
-      if (content) return content
-
-      content = $('#postViewArea').text().trim()
-      if (content) return content
-
       return ''
-    } catch (error) {
-      logger.error('Error crawling naver blog text:', error)
+    } catch (err) {
+      console.error('Error crawling Naver blog WITHOUT Playwright:', err)
       return ''
     }
   },
-  async translateToEnglish(text: string): Promise<string> {
-    const response = await axios.post(
-      'https://papago.apigw.ntruss.com/nmt/v1/translation',
+  async summarizeOneText(text: string): Promise<string> {
+    const res = await axios.post(
+      `https://clovastudio.stream.ntruss.com/v1/api-tools/summarization/v2`,
       {
-        source: 'ko',
-        target: 'en',
-        text
+        texts: [text],
+        autoSentenceSplitter: true,
+        segCount: -1,
+        segMaxSize: 1000,
+        segMinSize: 300,
+        includeAiFilters: false
       },
       {
         headers: {
-          'X-NCP-APIGW-API-KEY-ID': process.env.X_NCP_APIGW_API_KEY_ID!,
-          'X-NCP-APIGW-API-KEY': process.env.X_NCP_APIGW_API_KEY!,
+          Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 15000
       }
     )
 
-    return response.data.message.result.translatedText
+    return res.data.result.text
   },
   async summary(data: { locationName: string }) {
     try {
@@ -110,7 +103,7 @@ export const reviewService = {
 
       if (linkBlogs.length === 0) {
         logger.warn('No blog links found for location:', data.locationName)
-        const locationEN = await this.translateToEnglish(data.locationName).catch(() => data.locationName)
+        const locationEN = await translateKoreanToEnglish(data.locationName).catch(() => data.locationName)
 
         return {
           locationKR: data.locationName,
@@ -121,52 +114,34 @@ export const reviewService = {
         }
       }
 
-      // Step 2: Get blog text & Step 3: Summarize each blog individually
+      // Step 2: Crawling blog & Step 3: Summarize each blog individually
       logger.info('Fetching and summarizing individual blogs...')
-      const individualSummaries: Array<{ link: string; summary: string }> = []
-
       const MIN_LENGTH = 300
-      for (const blog of linkBlogs) {
-        try {
-          const content = await this.getNaverBlogText(blog.link)
-          const cleanedContent = cleanText(content)
+      const tasks = linkBlogs.map((blog: { link: string }) =>
+        limit(async () => {
+          try {
+            const html = await this.crawlBlog(blog.link)
+            const cleanedText = cleanText(html)
 
-          if (cleanedContent && cleanedContent.length >= MIN_LENGTH) {
-            // Summarize each blog individually
-            const response = await axios.post(
-              `https://clovastudio.stream.ntruss.com/v1/api-tools/summarization/v2`,
-              {
-                texts: [cleanedContent],
-                autoSentenceSplitter: true,
-                segCount: -1,
-                segMaxSize: 1000,
-                segMinSize: 300,
-                includeAiFilters: false
-              },
-              {
-                headers: {
-                  Authorization: `Bearer nv-${process.env.NCP_API_KEY!}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            )
+            if (!cleanedText || cleanedText.length < MIN_LENGTH) {
+              logger.warn(`Blog content too short for ${blog.link}`)
+              return null
+            }
 
-            const blogSummary = response.data.result.text
-            individualSummaries.push({
-              link: blog.link,
-              summary: blogSummary
-            })
+            const sum = await this.summarizeOneText(cleanedText)
+            return { link: blog.link, summary: sum }
+          } catch (e) {
+            return null
           }
-        } catch (error) {
-          logger.warn(`Failed to process blog: ${blog.link}`, error)
-          continue
-        }
-      }
+        })
+      )
+
+      const settled = await Promise.allSettled(tasks)
+      const individualSummaries = settled.filter(Boolean) as any[]
 
       if (individualSummaries.length === 0) {
-        logger.warn(`No blog content met the minimum length of ${MIN_LENGTH} characters.`)
-        const locationEN = await this.translateToEnglish(data.locationName).catch(() => data.locationName)
-
+        logger.warn('No valid blog summaries could be generated.')
+        const locationEN = await translateKoreanToEnglish(data.locationName).catch(() => data.locationName)
         return {
           locationKR: data.locationName,
           locationEN: locationEN,
@@ -176,6 +151,7 @@ export const reviewService = {
         }
       }
 
+      // Step 4: Consolidate individual summaries into final summary
       logger.info('Generating final consolidated summary...')
 
       const combinedSummariesText = individualSummaries.map((item) => `[출처: ${item.link}]\n${item.summary}`).join('\n\n---\n\n')
@@ -229,8 +205,8 @@ ${combinedSummariesText}
         .trim()
 
       // Translate to English
-      const summaryEN = await this.translateToEnglish(summaryKR)
-      const locationEN = await this.translateToEnglish(data.locationName)
+      const summaryEN = await translateKoreanToEnglish(summaryKR)
+      const locationEN = await translateKoreanToEnglish(data.locationName)
 
       return {
         locationKR: data.locationName,
