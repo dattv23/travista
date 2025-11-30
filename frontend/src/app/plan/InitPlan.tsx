@@ -42,14 +42,14 @@ const questions = [
     question: 'How many days will you spend for your trip?',
     icon: <HourglassEmptyOutlined />,
     type: 'dropdown',
-    options: ['1 day', '2 days', '3 days', '4 days', '5 days', '6 days', '7 days'],
+    options: ['1 day'],
     placeholder: '',
   },
   {
     question: 'How many people do you go with?',
     icon: <PeopleAltOutlined />,
     type: 'dropdown',
-    options: ['Alone', '2 people', '3 people', '4 people', '5 people'],
+    options: ['Alone', '2 people', '3 people'],
     placeholder: '',
   },
   {
