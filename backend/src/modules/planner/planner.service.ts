@@ -5,8 +5,8 @@ import { RouteCache } from './route-cache.model'
 import { logger } from '@/config/logger'
 import { smartTripPrompt } from '@/utils/prompts'
 import { IUserInput } from './planner.validation'
-import { parseItinerary } from '@/utils/parseItinerary'
 import { mapperService } from '../mapper/mapper.service'
+import { isKorean, translateKoreanToEnglish } from '@/utils/translate'
 
 export const plannerService = {
   async getTouristAttractions(state: IItineraryState): Promise<IItineraryState> {
@@ -393,12 +393,33 @@ export const plannerService = {
         }
       )
 
-      state.itinerary = response.data.result?.message?.content || ''
+      let itineraryJson = response.data.result?.message?.content || ''
+      state.itinerary = itineraryJson
+
+      try {
+        const parsed = JSON.parse(itineraryJson)
+
+        for (const day of parsed.days) {
+          for (const item of day.timeline) {
+            // Fix nameEN if Korean appears
+            if (isKorean(item.nameEN)) {
+              logger.warn(`Korean detected in nameEN → translating: ${item.nameEN}`)
+              item.nameEN = await translateKoreanToEnglish(item.nameEN)
+            }
+
+            // Fix note if Korean appears
+            if (isKorean(item.note)) {
+              logger.warn(`Korean detected in note → translating...`)
+              item.note = await translateKoreanToEnglish(item.note)
+            }
+          }
+        }
+        state.itinerary = JSON.stringify(parsed, null, 2)
+      } catch (postErr) {
+        logger.error('Failed to parse or sanitize itinerary JSON:', postErr)
+      }
 
       logger.info('Itinerary generation completed.')
-      const itineraryPreview = parseItinerary(state.itinerary)
-      if (itineraryPreview) logger.debug(`Itinerary preview: ${itineraryPreview.toString()}`)
-      else logger.warn('Failed to parse itinerary preview for logging.')
       return state
     } catch (error) {
       logger.error('Error generating itinerary:', error)
