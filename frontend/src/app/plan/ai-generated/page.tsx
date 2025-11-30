@@ -19,11 +19,11 @@ export default async function GeneratedPlanPage({ searchParams }: PageProps) {
   const lat = params.lat ? parseFloat(params.lat) : null;
   const lng = params.lng ? parseFloat(params.lng) : null;
 
-  console.log('📥 GeneratedPlanPage received:', {
-    location: params.location,
-    lat,
-    lng,
-  });
+  // console.log('📥 GeneratedPlanPage received:', {
+  //   location: params.location,
+  //   lat,
+  //   lng,
+  // });
 
   const initialItinerary =
     lat && lng && !isNaN(lat) && !isNaN(lng)
@@ -48,8 +48,6 @@ export default async function GeneratedPlanPage({ searchParams }: PageProps) {
   };
 
   console.log('🗺️ Initial Itinerary:', initialItinerary);
-
-  // return <></>
 
   return <PlanUI searchParams={cleanParams} initialItinerary={initialItinerary} />;
 }
