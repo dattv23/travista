@@ -55,7 +55,8 @@ export function AddModal({
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [internalWarning, setInternalWarning] = useState<string | null>(null);
-  
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
   const validationWarning = externalWarning || internalWarning;
 
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
@@ -91,6 +92,16 @@ export function AddModal({
 
   const handleImageUpload = (file: File) => {
     console.log('Image upload: ', file);
+    setUploadError(null); 
+    setScanResult(null);  
+
+    // Check if file is larger than 5MB 
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("This image is too large. Please upload a file smaller than 5MB.");
+      setUploadedImage(null); // Prevent setting the invalid image
+      return;
+    }
+
     setUploadedImage(file);
   }
 
@@ -99,6 +110,7 @@ export function AddModal({
 
     setIsLoading(true);
     setScanResult(null);
+    setUploadError(null);
 
     try {
       const formData = new FormData();
@@ -127,6 +139,7 @@ export function AddModal({
       }
     } catch (error) {
       console.error("Error: ", error);
+      setUploadError("An unexpected network error occurred.");
     } finally {
       setIsLoading(false);
     }
@@ -232,7 +245,15 @@ export function AddModal({
         ) : (
           <div className="flex flex-col gap-3">
             <ImageDropzone onImageUpload={handleImageUpload} />
-            {uploadedImage && (
+
+            {uploadError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-sm text-red-600 paragraph-p3-medium">Error</p>
+                <p className="text-sm text-red-500 paragraph-p3-medium">{uploadError}</p>
+              </div>
+            )}
+
+            {uploadedImage && !uploadError && (
               <>
                 <div className="flex justify-between">
                   <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">

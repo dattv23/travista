@@ -669,7 +669,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               <div className="w-full p-8 flex flex-col items-center justify-center gap-4">
                 <div className="relative flex items-center justify-center">
                   {/* Spinning Ring */}
-                  <Loader2 className="w-12 h-12 bg-[linear-gradient(90deg,#ff0087,#af52fe,#498efe,#00e9fe)] bg-clip-text text-transparent animate-spin" />
+                  <Loader2 className="w-12 h-12 text-primary animate-spin" />
                   
                   {/* Static Icon inside the spinner */}
                   <Map className="w-5 h-5 text-primary absolute" />
