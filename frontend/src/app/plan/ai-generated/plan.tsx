@@ -622,41 +622,51 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     <>
       <section className="flex min-h-screen w-full pt-[92px]">
         {/* left section */}
-        <div className="bgb-transparent flex h-screen w-1/3 flex-col px-[18px] shadow-xl">
+        <div className="bgb-transparent flex h-screen w-1/3 flex-col px-[18px] shadow-xl bg-[#F7F8FB]">
           <div className="pt-4">
-            {/* Title */}
-            <div>
-              {/* buttons */}
-              <div className="mb-4">
-                <button
-                  onClick={handleBack}
-                  className="text-primary flex max-w-max items-center justify-center rounded-full p-2 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)] hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)]"
-                >
-                  <ArrowCircleLeft />
-                </button>
-              </div>
-              <p className="paragraph-p1-semibold text-dark-text">Your Itinerary</p>
+            {/* Title + back button */}
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={handleBack}
+                className="text-primary flex max-w-max items-center justify-center rounded-full p-2 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)] hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+              >
+                <ArrowCircleLeft />
+              </button>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-sub-text border border-gray-100">
+                {itinerary.length} {itinerary.length === 1 ? 'stop' : 'stops'}
+              </span>
             </div>
-            <div className="flex items-start gap-6 pt-2">
-              <div className="flex flex-col gap-2">
-                <p className="paragraph-p3-medium text-dark-text">{searchParams.theme} itinerary</p>
-                <p className="paragraph-p3-medium text-sub-text">Start date: {searchParams.date}</p>
-                <p className="paragraph-p3-medium text-sub-text">
-                  {totalDuration ||
-                    `Est. (${itinerary.length} ${itinerary.length === 1 ? 'location' : 'locations'})`}
-                </p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <p className="paragraph-p3-medium text-sub-text">{searchParams.people}</p>
-                <p className="paragraph-p3-medium text-sub-text">
-                  Duration: {searchParams.duration}
-                </p>
-                <p className="paragraph-p3-medium text-sub-text">Budget: {searchParams.budget}</p>
+
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm border border-gray-100">
+              <p className="paragraph-p1-semibold text-dark-text mb-1">Your Itinerary</p>
+              <p className="paragraph-p3-medium text-sub-text mb-3">
+                {searchParams.theme} itinerary
+              </p>
+
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex flex-col gap-1">
+                  <p className="paragraph-p4-regular text-sub-text">Start date</p>
+                  <p className="paragraph-p3-medium text-dark-text">{searchParams.date}</p>
+                  <p className="paragraph-p4-regular text-sub-text mt-2">Estimated time</p>
+                  <p className="paragraph-p3-medium text-dark-text">
+                    {totalDuration ||
+                      `Est. (${itinerary.length} ${itinerary.length === 1 ? 'location' : 'locations'})`}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1 text-right">
+                  <p className="paragraph-p4-regular text-sub-text">Group</p>
+                  <p className="paragraph-p3-medium text-dark-text">{searchParams.people}</p>
+                  <p className="paragraph-p4-regular text-sub-text mt-2">Duration</p>
+                  <p className="paragraph-p3-medium text-dark-text">
+                    {searchParams.duration}
+                  </p>
+                  <p className="paragraph-p4-regular text-sub-text mt-2">Budget</p>
+                  <p className="paragraph-p3-medium text-dark-text">{searchParams.budget}</p>
+                </div>
               </div>
             </div>
-            <div className="mt-5 flex justify-between">
-              <button></button>
-              <div className="paragraph-p3-medium flex gap-5">
+            <div className="mt-4 flex justify-end">
+              <div className="paragraph-p3-medium flex gap-3">
                 {activeSegmentPath && (
                   <button
                     className="text-primary border-primary cursor-pointer rounded-[8px] border-2 bg-transparent p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]"

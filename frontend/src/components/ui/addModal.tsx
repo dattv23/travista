@@ -259,12 +259,19 @@ export function AddModal({
 
             {uploadedImage && !uploadError && (
               <>
-                <div className="flex justify-between">
-                  <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <p className="text-sm text-gray-700 font-medium">Uploaded file: {uploadedImage.name}</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex flex-1 items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 min-w-0">
+                    <div className="flex flex-col min-w-0 text-left">
+                      <p className="text-[11px] text-sub-text uppercase tracking-wide">
+                        Image ready to scan
+                      </p>
+                      <p className="text-sm text-dark-text font-medium truncate">
+                        {uploadedImage.name}
+                      </p>
+                    </div>
                   </div>
                   <button
-                    className="bg-primary text-light-text px-4 mt-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                    className="bg-primary text-light-text px-4 py-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] whitespace-nowrap"
                     onClick={handleSendImage}
                   >
                     {isLoading ? 'Processing...' : 'Scan'}
