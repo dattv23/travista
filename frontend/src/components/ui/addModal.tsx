@@ -35,6 +35,8 @@ interface ScanResult {
   name: string;          
   description?: string;  
   note?: string | null;  
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export function AddModal({ 
@@ -134,7 +136,9 @@ export function AddModal({
         setScanResult({
           name: name,
           description: result.data?.description,
-          note: result.data?.note
+          note: result.data?.note,
+          lat: result.data?.lat ?? null,
+          lng: result.data?.lng ?? null
         });
       }
     } catch (error) {
@@ -255,12 +259,19 @@ export function AddModal({
 
             {uploadedImage && !uploadError && (
               <>
-                <div className="flex justify-between">
-                  <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200">
-                    <p className="text-sm text-gray-700 font-medium">Uploaded file: {uploadedImage.name}</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex flex-1 items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-2 min-w-0">
+                    <div className="flex flex-col min-w-0 text-left">
+                      <p className="text-[11px] text-sub-text uppercase tracking-wide">
+                        Image ready to scan
+                      </p>
+                      <p className="text-sm text-dark-text font-medium truncate">
+                        {uploadedImage.name}
+                      </p>
+                    </div>
                   </div>
                   <button
-                    className="bg-primary text-light-text px-4 mt-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                    className="bg-primary text-light-text px-4 py-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] whitespace-nowrap"
                     onClick={handleSendImage}
                   >
                     {isLoading ? 'Processing...' : 'Scan'}
@@ -294,17 +305,38 @@ export function AddModal({
                       </div>
 
                       {(scanResult.name !== "Unknown location" && !scanResult.note) && (
-                        <button
-                          onClick={() => {
-                            // Note: For image mode, we would need location coordinates
-                            // This would require additional API call to get coords from name
-                            // For now, just close modal - user can use input mode
-                            onClose();
-                          }}
-                          className="bg-primary text-light-text px-4 py-2.5 ml-2 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] whitespace-nowrap"
-                        >
-                          Add
-                        </button>
+                        <div className="flex items-center gap-2 ml-2">
+                          <button
+                            onClick={() => {
+                              if (
+                                onConfirm &&
+                                scanResult.lat != null &&
+                                scanResult.lng != null
+                              ) {
+                                onConfirm({
+                                  name: scanResult.name,
+                                  lat: scanResult.lat,
+                                  lng: scanResult.lng
+                                });
+                                setInternalWarning(null);
+                                if (onValidationChange) {
+                                  onValidationChange(null);
+                                }
+                                onClose();
+                              }
+                            }}
+                            className="bg-primary text-light-text px-4 py-2.5 rounded-[8px] transition cursor-pointer hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] whitespace-nowrap"
+                          >
+                            Add &amp; Close
+                          </button>
+                          <button
+                            type="button"
+                            onClick={onClose}
+                            className="px-4 py-2.5 rounded-[8px] border border-divider text-sub-text hover:bg-hover transition cursor-pointer whitespace-nowrap"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       )}
                     </div>
                   </>
