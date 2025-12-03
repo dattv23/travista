@@ -73,6 +73,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
   } | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [totalDuration, setTotalDuration] = useState<string>('');
+  const [isAddingStop, setIsAddingStop] = useState(false);
+  const [addingStopName, setAddingStopName] = useState<string | null>(null);
 
   // Prevent double fetching
   const hasInitiatedRef = useRef(false);
@@ -403,6 +405,10 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     newStop: { name: string; lat: number; lng: number },
     forceAdd: boolean = false,
   ) => {
+    // Show "adding to plan" modal
+    setIsAddingStop(true);
+    setAddingStopName(newStop.name);
+
     if (itinerary.length < 2) {
       // Not enough stops to validate, just add it
       setItinerary([...itinerary, { lat: newStop.lat, lng: newStop.lng }]);
@@ -411,6 +417,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       setPendingLocation(null);
       setValidationWarning(null);
       setValidationError(null);
+      setIsAddingStop(false);
+      setAddingStopName(null);
       return;
     }
 
@@ -422,6 +430,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       setPendingLocation(null);
       setValidationWarning(null);
       setValidationError(null);
+      setIsAddingStop(false);
+      setAddingStopName(null);
       return;
     }
 
@@ -484,6 +494,8 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       setValidationError(error.message || 'Failed to validate location. Please try again.');
     } finally {
       setIsValidating(false);
+      setIsAddingStop(false);
+      setAddingStopName(null);
     }
   };
 
@@ -770,6 +782,27 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
             onAddAnyway={handleAddAnyway}
             onCancel={handleCancel}
           />
+        </div>
+      )}
+
+      {isAddingStop && (
+        <div className="bg-dark-text/40 fixed inset-0 z-50 flex items-center justify-center">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl border border-gray-200 flex flex-col items-center gap-4">
+            <div className="relative flex items-center justify-center">
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              <Map className="w-4 h-4 text-primary absolute" />
+            </div>
+            <p className="paragraph-p2-medium text-dark-text text-center">
+              Adding{' '}
+              <span className="font-semibold text-primary">
+                {addingStopName || 'this location'}
+              </span>{' '}
+              to your plan...
+            </p>
+            <p className="paragraph-p4-regular text-sub-text text-center">
+              We’re checking your route to keep the total travel time reasonable.
+            </p>
+          </div>
         </div>
       )}
     </>
