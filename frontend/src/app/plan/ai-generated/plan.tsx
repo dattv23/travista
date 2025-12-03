@@ -606,6 +606,9 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
     }
   };
 
+  // Global counter for visible location order across all days
+  let globalLocationCounter = 0;
+
   return (
     <>
       <section className="flex min-h-screen w-full pt-[92px]">
@@ -702,32 +705,35 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               parsedData.days.map((day, dayIdx) => (
                 <div key={`day-${dayIdx}`} className="flex flex-col gap-3">
                   {/* Timeline Items */}
-                  {day.timeline.map((item, idx) => (
-                    <div
-                      key={`timeline-item-${dayIdx}-${idx}`}
-                      className="w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md"
-                      onClick={() => {
-                        if (item.type === 'car') {
-                          // Click vào Driving → highlight đoạn đường
-                          handleDrivingClick((item as any).sectionPath);
-                        } else {
-                          if (item.lat && item.lng) {
+                  {day.timeline.map((item, idx) => {
+                    const isDriving = item.type === 'car';
+                    const locationIndex = isDriving ? undefined : ++globalLocationCounter;
+
+                    return (
+                      <div
+                        key={`timeline-item-${dayIdx}-${idx}`}
+                        className="w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md"
+                        onClick={() => {
+                          if (isDriving) {
+                            // Click Driving → highlight route segment
+                            handleDrivingClick((item as any).sectionPath);
+                          } else if (item.lat && item.lng) {
                             const searchName = (item as any).nameKR || item.nameEN || '';
                             handlePlanCardClick(item.lat, item.lng, searchName);
                           }
-                        }
-                      }}
-                    >
-                      <PlanCard
-                        type={item.type === 'car' ? 'car' : 'location'}
-                        name={item.nameEN}
-                        duration={`${item.start_time} - ${item.end_time}`}
-                        estTime={`${item.duration_minutes} mins`}
-                        summary={item.note}
-                        locationIndex={item.type === 'car' ? undefined : item.index}
-                      />
-                    </div>
-                  ))}
+                        }}
+                      >
+                        <PlanCard
+                          type={isDriving ? 'car' : 'location'}
+                          name={item.nameEN}
+                          duration={`${item.start_time} - ${item.end_time}`}
+                          estTime={`${item.duration_minutes} mins`}
+                          summary={item.note}
+                          locationIndex={locationIndex}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
           </div>

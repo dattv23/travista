@@ -31,6 +31,7 @@ export interface TimelineItem {
   lng: number | null;
   note: string;
   uniqueId?: string;
+  displayIndex?: number;
 }
 
 export interface DayPlan {
