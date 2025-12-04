@@ -631,7 +631,7 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
             <div className="flex items-center justify-between mb-3">
               <button
                 onClick={handleBack}
-                className="text-primary flex max-w-max items-center justify-center rounded-full p-2 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)] hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                className="text-primary flex max-w-max items-center justify-center rounded-full p-2 transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)] hover:text-[color-mix(in_srgb,var(--color-primary),black_10%)] hover:scale-110 active:scale-95"
               >
                 <ArrowCircleLeft />
               </button>
@@ -640,9 +640,9 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               </span>
             </div>
 
-            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm border border-gray-100">
-              <p className="paragraph-p1-semibold text-dark-text mb-1">Your Itinerary</p>
-              <p className="paragraph-p3-medium text-sub-text mb-3">
+            <div className="rounded-2xl bg-white px-4 py-3 shadow-sm border border-gray-100 transition-all duration-300 hover:shadow-md hover:border-primary/20">
+              <p className="paragraph-p1-semibold text-dark-text mb-1 transition-colors duration-300">Your Itinerary</p>
+              <p className="paragraph-p3-medium text-sub-text mb-3 transition-colors duration-300">
                 {searchParams.theme} itinerary
               </p>
 
@@ -672,14 +672,14 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
               <div className="paragraph-p3-medium flex gap-3">
                 {activeSegmentPath && (
                   <button
-                    className="text-primary border-primary cursor-pointer rounded-[8px] border-2 bg-transparent p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-background),black_10%)]"
+                    className="text-primary border-primary cursor-pointer rounded-[10px] border-2 bg-transparent px-4 py-2.5 transition-all duration-200 hover:bg-primary/10 hover:scale-105 active:scale-95 font-medium"
                     onClick={handleShowSuggestedRoute}
                   >
                     Show all paths
                   </button>
                 )}
                 <button
-                  className="bg-primary text-light-text border-primary cursor-pointer rounded-[8px] border-2 p-2.5 transition hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                  className="bg-primary text-light-text border-primary cursor-pointer rounded-[10px] border-2 px-4 py-2.5 transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] hover:scale-105 active:scale-95 shadow-md hover:shadow-lg font-medium"
                   onClick={addModal.open}
                 >
                   Add new stop
@@ -691,30 +691,43 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
           {/* Main Content Area */}
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto pb-10">
             {isLoading && (
-              <div className="w-full p-8 flex flex-col items-center justify-center gap-4">
+              <div className="w-full p-8 flex flex-col items-center justify-center gap-6 min-h-[400px]">
                 <div className="relative flex items-center justify-center">
-                  {/* Spinning Ring */}
+                  {/* Outer spinning ring */}
+                  <div className="absolute w-16 h-16 border-4 border-primary/20 rounded-full"></div>
                   <Loader2 className="w-12 h-12 text-primary animate-spin" />
                   
-                  {/* Static Icon inside the spinner */}
-                  <Map className="w-5 h-5 text-primary absolute" />
+                  {/* Static Icon inside the spinner with pulse */}
+                  <Map className="w-5 h-5 text-primary absolute animate-pulse" />
                 </div>
 
-                <p className="bg-[linear-gradient(90deg,#ff0087,#af52fe,#498efe,#00e9fe)] bg-clip-text text-transparent paragraph-p2-medium animate-pulse">
+                <div className="flex flex-col items-center gap-2">
+                  <p className="bg-[linear-gradient(90deg,#ff0087,#af52fe,#498efe,#00e9fe)] bg-clip-text text-transparent paragraph-p2-medium font-semibold animate-pulse">
                   Generating your {searchParams.theme} itinerary...
                 </p>
+                <div className="flex gap-1.5 mt-2">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+                </div>
               </div>
             )}
 
             {error && (
-              <div className="rounded-lg p-4 text-center">
-                <p className="mb-3 text-sm text-red-600">Failed to generate plan.</p>
-                <p className="mb-3 text-xs text-red-400">
-                  {typeof error === 'string' ? error : 'Timeout or Server Error'}
-                </p>
+              <div className="rounded-xl p-6 text-center bg-red-50 border border-red-200 animate-fadeIn">
+                <div className="mb-4">
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                  <p className="mb-2 text-sm font-semibold text-red-700">Failed to generate plan.</p>
+                  <p className="text-xs text-red-500">
+                    {typeof error === 'string' ? error : 'Timeout or Server Error'}
+                  </p>
+                </div>
                 <button
                   onClick={handleRetry}
-                  className="bg-primary text-light-text flex w-full cursor-pointer items-center justify-center gap-2 rounded-md py-2 text-sm transition hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)]"
+                  className="bg-primary text-light-text flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 hover:bg-[color-mix(in_srgb,var(--color-primary),black_10%)] hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
                 >
                   Try Again
                 </button>
@@ -730,11 +743,17 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
                   {day.timeline.map((item, idx) => {
                     const isDriving = item.type === 'car';
                     const locationIndex = isDriving ? undefined : ++globalLocationCounter;
+                    const totalIdx = parsedData.days
+                      .slice(0, dayIdx)
+                      .reduce((acc, d) => acc + d.timeline.length, 0) + idx;
 
                     return (
                       <div
                         key={`timeline-item-${dayIdx}-${idx}`}
-                        className="w-full cursor-pointer rounded-lg border border-gray-100 bg-white p-2 shadow-sm transition hover:shadow-md"
+                        className="w-full cursor-pointer rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-primary/30 group"
+                        style={{
+                          animation: `fadeInUp 0.5s ease-out ${totalIdx * 0.1}s both`,
+                        }}
                         onClick={() => {
                           if (isDriving) {
                             // Click Driving → highlight route segment
@@ -781,43 +800,62 @@ export default function PlanUI({ searchParams, initialItinerary }: PlanClientUIP
       </section>
 
       {addModal.isOpen && (
-        <div className="bg-dark-text/20 fixed inset-0 z-50 flex items-center justify-center">
-          <AddModal
-            isOpen={addModal.isOpen}
-            onClose={() => {
+        <div 
+          className="bg-dark-text/20 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm animate-fadeIn"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
               addModal.close();
               setValidationWarning(null);
               setValidationError(null);
               setPendingLocation(null);
-            }}
-            onConfirm={handleAddNewStop}
-            validationWarning={validationWarning}
-            validationError={validationError}
-            isValidating={isValidating}
-            onValidationChange={setValidationWarning}
-            onAddAnyway={handleAddAnyway}
-            onCancel={handleCancel}
-          />
+            }
+          }}
+        >
+          <div className="animate-scaleIn">
+            <AddModal
+              isOpen={addModal.isOpen}
+              onClose={() => {
+                addModal.close();
+                setValidationWarning(null);
+                setValidationError(null);
+                setPendingLocation(null);
+              }}
+              onConfirm={handleAddNewStop}
+              validationWarning={validationWarning}
+              validationError={validationError}
+              isValidating={isValidating}
+              onValidationChange={setValidationWarning}
+              onAddAnyway={handleAddAnyway}
+              onCancel={handleCancel}
+            />
+          </div>
         </div>
       )}
 
       {isAddingStop && (
-        <div className="bg-dark-text/40 fixed inset-0 z-50 flex items-center justify-center">
-          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl border border-gray-200 flex flex-col items-center gap-4">
+        <div className="bg-dark-text/40 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl border border-gray-200 flex flex-col items-center gap-5 animate-scaleIn">
             <div className="relative flex items-center justify-center">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-              <Map className="w-4 h-4 text-primary absolute" />
+              <div className="absolute w-16 h-16 border-4 border-primary/20 rounded-full animate-ping"></div>
+              <div className="absolute w-14 h-14 border-2 border-primary/30 rounded-full"></div>
+              <Loader2 className="w-10 h-10 text-primary animate-spin relative z-10" />
+              <Map className="w-4 h-4 text-primary absolute z-10" />
             </div>
-            <p className="paragraph-p2-medium text-dark-text text-center">
-              Adding{' '}
-              <span className="font-semibold text-primary">
-                {addingStopName || 'this location'}
-              </span>{' '}
-              to your plan...
-            </p>
-            <p className="paragraph-p4-regular text-sub-text text-center">
-              We’re checking your route to keep the total travel time reasonable.
-            </p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="paragraph-p2-medium text-dark-text text-center">
+                Adding{' '}
+                <span className="font-semibold text-primary animate-pulse">
+                  {addingStopName || 'this location'}
+                </span>{' '}
+                to your plan...
+              </p>
+              <p className="paragraph-p4-regular text-sub-text text-center max-w-xs">
+                We're checking your route to keep the total travel time reasonable.
+              </p>
+            </div>
+            <div className="w-full max-w-[200px] h-1 bg-gray-100 rounded-full overflow-hidden mt-2">
+              <div className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full animate-progress"></div>
+            </div>
           </div>
         </div>
       )}
